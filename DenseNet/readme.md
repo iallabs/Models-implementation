@@ -1,0 +1,1 @@
+DenseNet implementation in Tensorflow. Inspired from slim models construction
