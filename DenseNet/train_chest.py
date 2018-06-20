@@ -253,8 +253,6 @@ def run():
                     print (format_str % (datetime.time(), self._step, loss_value, accuracy_value,
                                examples_per_sec, sec_per_batch))
 
-                """if self._step % num_steps_per_epoch == 0:"""
-
 
 
         max_step = num_epochs*num_steps_per_epoch
