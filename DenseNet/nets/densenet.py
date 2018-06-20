@@ -140,9 +140,25 @@ def densenet161(inputs, num_classes=1000, is_training=True, reuse=None):
                     reduction=0.5,
                     growth_rate=48,
                     number_filters=96,
-                    number_layers=[6,12,36,24
-                    
-                    ],
+                    number_layers=[6,12,36,24],
                     is_training=is_training,
                     reuse=reuse,
                     scope='densenet121')
+
+def densenet_arg_scope(weight_decay=1e-4,
+                       batch_norm_decay=0.99,
+                       batch_norm_epsilon=1.1e-5):
+
+    with slim.arg_scope([slim.conv2d, slim.batch_norm, slim.avg_pool2d, slim.max_pool2d,
+                       _block, _global_avg_pool2d]):
+
+        with slim.arg_scope([slim.conv2d],
+                         weights_regularizer=slim.l2_regularizer(weight_decay),
+                         activation_fn=None,
+                         biases_initializer=None):
+            with slim.arg_scope([slim.batch_norm],
+                          scale=True,
+                          decay=batch_norm_decay,
+                          epsilon=batch_norm_epsilon) as scope:
+                return scope
+
