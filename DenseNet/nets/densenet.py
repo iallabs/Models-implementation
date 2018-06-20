@@ -116,10 +116,10 @@ def densenet(inputs,
             net = _global_avg_pool2d(net, scope='global_avg_pool')
         net = slim.conv2d(net, num_classes, 1,
                             biases_initializer=tf.zeros_initializer(),
-                            scope='logits')
+                            scope='Logits')
         end_points = slim.utils.convert_collection_to_dict(end_points_collection)
         if num_classes is not None:
-            end_points['predictions'] = slim.softmax(net, scope='predictions')
+            end_points['Predictions'] = slim.softmax(net, scope='Predictions')
         return net, end_points
 
 
