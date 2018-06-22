@@ -164,7 +164,7 @@ def run():
     with tf.Graph().as_default() as graph:
         tf.logging.set_verbosity(tf.logging.INFO) #Set the verbosity to INFO level
 
-        dataset = get_dataset("train", dataset_dir, file_pattern=file_pattern)
+        dataset = get_dataset("validation", dataset_dir, file_pattern=file_pattern)
         images,_, oh_labels, labels = load_batch(dataset, batch_size)
 
         #Calcul of batches/epoch, number of steps after decay learning rate
@@ -173,16 +173,16 @@ def run():
         decay_steps = int(num_epochs_before_decay * num_steps_per_epoch)
 
         #Create the model inference
-        """with slim.arg_scope(densenet.densenet_arg_scope(is_training=True)):"""
-        logits, end_points = densenet.densenet121(images, num_classes = dataset.num_classes, is_training = True)
+        with slim.arg_scope(densenet.densenet_arg_scope(is_training=True)):
+            logits, end_points = densenet.densenet121(images, num_classes = dataset.num_classes, is_training = True)
 
-        excluding = ['densenet121/Logits']
+        excluding = ['densenet121/logits']
         variable_to_restore = slim.get_variables_to_restore(exclude=excluding)
         slim.assign_from_checkpoint(checkpoint_file, variable_to_restore)
-
+        logit = tf.squeeze(tf.squeeze(logits, [1]),[1])
 
         #Defining losses and regulization ops:
-        loss = tf.losses.softmax_cross_entropy(onehot_labels = oh_labels, logits = logits)
+        loss = tf.losses.softmax_cross_entropy(onehot_labels = oh_labels, logits = logit)
         total_loss = tf.losses.get_total_loss()    #obtain the regularization losses as well
         
         #Create the global step for monitoring the learning_rate and training:
@@ -209,7 +209,7 @@ def run():
 
 
         #State the metrics that you want to predict. We get a predictions that is not one_hot_encoded.
-        predictions = tf.argmax(end_points['Predictions'], 1)
+        predictions = tf.squeeze(tf.argmax(end_points['Predictions'], 3))
         probabilities = end_points['Predictions']
         gen_acc , accuracy_update = tf.metrics.accuracy(labels, predictions)
         accuracy = tf.reduce_mean(tf.cast(tf.equal(labels, predictions), tf.float32))
