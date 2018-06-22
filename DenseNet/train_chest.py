@@ -3,7 +3,7 @@ import tensorflow as tf
 from tensorflow.python.platform import gfile
 from tensorflow.python.platform import tf_logging as logging
 
-import DenseNet.nets.densenet as densenet
+import nets.densenet as densenet
 
 from research.slim.preprocessing import vgg_preprocessing
 
@@ -18,7 +18,7 @@ flags.DEFINE_string('dataset_dir',"data",'String: Your dataset directory')
 flags.DEFINE_string('train_dir', "trainlogs", 'String: Your train directory')
 flags.DEFINE_boolean('log_device_placement', True,
                             """Whether to log device placement.""")
-flags.DEFINE_string('ckpt',"ckpt",'String: Your dataset directory')
+flags.DEFINE_string('ckpt',"ckpt/tf-densenet121.ckpt",'String: Your dataset directory')
 FLAGS = flags.FLAGS
 
 #=======Dataset Informations=======#
@@ -136,7 +136,6 @@ def load_batch(dataset, batch_size, height=image_size, width=image_size,is_train
     )
 
     raw_image, label = provider.get(['image','label'])
-
     #Preprocessing using inception_preprocessing:
     image = vgg_preprocessing.preprocess_image(raw_image, height, width, is_training)
     one_hot_labels = slim.one_hot_encoding(label, dataset.num_classes)

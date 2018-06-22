@@ -83,9 +83,8 @@ def densenet(inputs,
     with slim.arg_scope([slim.batch_norm, slim.dropout],
                          is_training=is_training), \
             slim.arg_scope([slim.conv2d, _conv, _block,
-                         _dense_block, _transition_block], 
-                         outputs_collections=end_points_collection), \
-                slim.arg_scope([_conv], dropout_rate=dropout_rate):
+                         _dense_block, _transition_block]), \
+                slim.arg_scope([_conv]):
         net = inputs
 
       # initial convolution
@@ -95,20 +94,23 @@ def densenet(inputs,
         net = slim.max_pool2d(net, 3, stride=2, padding='SAME')
 
         # blocks
+
         for i in range(number_dense_blocks - 1):
             # dense blocks
+
             net, number_filters = _dense_block(net, number_layers[i], number_filters,
                                         growth_rate,
                                         scope='dense_block' + str(i+1))
 
             # Add transition_block
+
             net, number_filters = _transition_block(net, number_filters,
                                              compression=compression,
                                              scope='transition_block' + str(i+1))
             net, num_filters = _dense_block(
               net, number_layers[-1], number_filters,
               growth_rate,
-              scope='dense_block' + str(number_dense_blocks))
+              scope='dense_block_bis' + str(i+1))
         # final blocks
         with tf.variable_scope('final_block', [inputs]):
             net = slim.batch_norm(net)
