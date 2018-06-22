@@ -14,17 +14,15 @@ import datetime
 slim = tf.contrib.slim
 
 flags = tf.app.flags
-flags.DEFINE_string('dataset_dir',None,'String: Your dataset directory')
-flags.DEFINE_string('train_dir', None, 'String: Your train directory')
-flags.DEFINE_boolean('log_device_placement', False,
+flags.DEFINE_string('dataset_dir',"data",'String: Your dataset directory')
+flags.DEFINE_string('train_dir', "trainlogs", 'String: Your train directory')
+flags.DEFINE_boolean('log_device_placement', True,
                             """Whether to log device placement.""")
-flags.DEFINE_string('ckpt',None,'String: Your dataset directory')
+flags.DEFINE_string('ckpt',"ckpt",'String: Your dataset directory')
 FLAGS = flags.FLAGS
 
 #=======Dataset Informations=======#
 dataset_dir = FLAGS.dataset_dir
-
-log_dir="log"
 
 #Emplacement du checkpoint file
 checkpoint_file= FLAGS.ckpt
@@ -122,7 +120,6 @@ def get_dataset(phase_name, dataset_dir, file_pattern=file_pattern, file_pattern
     
     return dataset
 
-
 def load_batch(dataset, batch_size, height=image_size, width=image_size,is_training=True):
 
     """ Fucntion for loading a train batch 
@@ -160,8 +157,8 @@ def load_batch(dataset, batch_size, height=image_size, width=image_size,is_train
 
 def run():
     #Create log_dir:
-    if not os.path.exists(log_dir):
-        os.mkdir(log_dir)
+    if not os.path.exists(FLAGS.train_dir):
+        os.mkdir(FLAGS.train_dir)
 
     #=========== Training ===========#
     #Adding the graph:
