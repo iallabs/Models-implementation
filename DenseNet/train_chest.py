@@ -179,7 +179,7 @@ def run():
 
         excluding = ['densenet121/Logits']
         variable_to_restore = slim.get_variables_to_restore(exclude=excluding)
-        init_assign_op, init_feed_dict = slim.assign_from_checkpoint(checkpoint_file, variable_to_restore)
+        slim.assign_from_checkpoint(checkpoint_file, variable_to_restore)
 
 
         #Defining losses and regulization ops:
@@ -224,8 +224,7 @@ def run():
         tf.summary.histogram('probabilities', probabilities)
         my_summary_op = tf.summary.merge_all()
 
-        def InitAssignFn(sess):
-            sess.run(init_assign_op, init_feed_dict)
+        
 
         class _LoggerHook(tf.train.SessionRunHook):
 
