@@ -24,8 +24,8 @@ def _conv(inputs, number_filters, kernel_size, strides=1, dropout=None, scope=No
 def _block(inputs, number_filters, scope=None, outputs=None):
     with tf.variable_scope(scope, 'conv_blockn', [inputs]) as v_scope:
         net = inputs
-        net = _conv(net, number_filters*4, 1, scope="cv1")
-        net = _conv(net, number_filters,3, scope="cv2")
+        net = _conv(net, number_filters*4, 1, scope="x1")
+        net = _conv(net, number_filters,3, scope="x2")
         net = tf.concat([inputs, net], 3)
         net = slim.utils.collect_named_outputs(outputs, v_scope.name, net)
     return net
@@ -76,51 +76,53 @@ def densenet(inputs,
     compression = 1.0 - reduction
     number_dense_blocks = len(number_layers)
 
-    with tf.variable_scope(scope, 'densenetnnn', [inputs, num_classes],
-                        reuse=reuse) as v_scope:
+    with tf.variable_scope(scope, 'densenetnnn', [inputs, num_classes],reuse=reuse) as v_scope:
         end_points_collection = v_scope.name + '_end_points'
 
-    with slim.arg_scope([slim.batch_norm, slim.dropout],
+        with slim.arg_scope([slim.batch_norm, slim.dropout],
                          is_training=is_training), \
-            slim.arg_scope([slim.conv2d, _conv, _block,
-                         _dense_block, _transition_block], 
-                         outputs_collections=end_points_collection), \
-                slim.arg_scope([_conv], dropout_rate=dropout_rate):
-        net = inputs
+                slim.arg_scope([slim.conv2d, _conv, _block,
+                         _dense_block, _transition_block]), \
+                                    slim.arg_scope([_conv]):
+            net = inputs
 
-      # initial convolution
-        net = slim.conv2d(net, number_filters, 7, stride=2, scope='conv1_begining')
-        net = slim.batch_norm(net)
-        net = tf.nn.relu(net)
-        net = slim.max_pool2d(net, 3, stride=2, padding='SAME')
+        # initial convolution
+      
+            net = slim.conv2d(net, number_filters, 7, stride=2, scope='conv1')
+            net = slim.batch_norm(net)
+            net = tf.nn.relu(net)
+            net = slim.max_pool2d(net, 3, stride=2, padding='SAME')
 
         # blocks
-        for i in range(number_dense_blocks - 1):
+
+            for i in range(number_dense_blocks - 1):
             # dense blocks
-            net, number_filters = _dense_block(net, number_layers[i], number_filters,
+
+                net, number_filters = _dense_block(net, number_layers[i], number_filters,
                                         growth_rate,
                                         scope='dense_block' + str(i+1))
 
             # Add transition_block
-            net, number_filters = _transition_block(net, number_filters,
+
+                net, number_filters = _transition_block(net, number_filters,
                                              compression=compression,
                                              scope='transition_block' + str(i+1))
             net, num_filters = _dense_block(
-              net, number_layers[-1], number_filters,
-              growth_rate,
-              scope='dense_block' + str(number_dense_blocks))
-        # final blocks
-        with tf.variable_scope('final_block', [inputs]):
-            net = slim.batch_norm(net)
-            net = tf.nn.relu(net)
-            net = _global_avg_pool2d(net, scope='global_avg_pool')
-        net = slim.conv2d(net, num_classes, 1,
+                net, number_layers[-1], number_filters,
+                growth_rate,
+                scope='dense_block' + str(number_dense_blocks))
+            # final block
+            with tf.variable_scope('final_block', [inputs]):
+                net = slim.batch_norm(net)
+                net = tf.nn.relu(net)
+                net = _global_avg_pool2d(net, scope='global_avg_pool')
+            net = slim.conv2d(net, num_classes, 1,
                             biases_initializer=tf.zeros_initializer(),
-                            scope='Logits')
-        end_points = slim.utils.convert_collection_to_dict(end_points_collection)
-        if num_classes is not None:
-            end_points['Predictions'] = slim.softmax(net, scope='Predictions')
-        return net, end_points
+                            scope='logits')
+            end_points = slim.utils.convert_collection_to_dict(end_points_collection)
+            if num_classes is not None:
+                end_points['Predictions'] = slim.softmax(net, scope='Predictions')
+            return net, end_points
 
 
 def densenet121(inputs, num_classes=1000, is_training=True, reuse=None):
@@ -147,7 +149,7 @@ def densenet161(inputs, num_classes=1000, is_training=True, reuse=None):
 
 def densenet_arg_scope(weight_decay=1e-4,
                        batch_norm_decay=0.99,
-                       batch_norm_epsilon=1.1e-5):
+                       batch_norm_epsilon=1.1e-5, is_training=True):
 
     with slim.arg_scope([slim.conv2d, slim.batch_norm, slim.avg_pool2d, slim.max_pool2d,
                        _block, _global_avg_pool2d]):
