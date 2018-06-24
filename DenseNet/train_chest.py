@@ -4,10 +4,11 @@ from tensorflow.python.platform import gfile
 from tensorflow.python.platform import tf_logging as logging
 
 import nets.densenet as densenet
-
+import preprocessing.densenet_pre as dp
 from research.slim.preprocessing import vgg_preprocessing
 
 import os
+import sys
 import time
 import datetime
 
@@ -58,15 +59,15 @@ items_to_descriptions = {
 
 #=======Training Informations======#
 #Nombre d'époques pour l'entraîen
-num_epochs = 30
+num_epochs = 60
 
 #State your batch size
 batch_size = 16
 
 #Learning rate information and configuration (Up to you to experiment)
-initial_learning_rate = 0.001
+initial_learning_rate = 0.0001
 learning_rate_decay_factor = 0.7
-num_epochs_before_decay = 3
+num_epochs_before_decay = 1
 
 #We now create a function that creates a Dataset class which will give us many TFRecord files to feed in the examples into a queue in parallel.
 def get_dataset(phase_name, dataset_dir, file_pattern=file_pattern, file_pattern_for_counting=file_pattern_for_counting):
@@ -137,7 +138,7 @@ def load_batch(dataset, batch_size, height=image_size, width=image_size,is_train
 
     raw_image, label = provider.get(['image','label'])
     #Preprocessing using inception_preprocessing:
-    image = vgg_preprocessing.preprocess_image(raw_image, height, width, is_training)
+    image = dp.preprocess_image(raw_image, height, width, is_training)
     one_hot_labels = slim.one_hot_encoding(label, dataset.num_classes)
     #As for the raw images, we just do a simple reshape to batch it up
     raw_image = tf.expand_dims(raw_image, 0)
@@ -164,7 +165,7 @@ def run():
     with tf.Graph().as_default() as graph:
         tf.logging.set_verbosity(tf.logging.INFO) #Set the verbosity to INFO level
 
-        dataset = get_dataset("validation", dataset_dir, file_pattern=file_pattern)
+        dataset = get_dataset("train", dataset_dir, file_pattern=file_pattern)
         images,_, oh_labels, labels = load_batch(dataset, batch_size)
 
         #Calcul of batches/epoch, number of steps after decay learning rate
@@ -227,6 +228,8 @@ def run():
 
             def begin(self):
                 self._step = global_step_init
+                self.totalloss=0.0
+                self.totalacc=0.0
 
             def before_run(self, run_context):
                 self._step += 1
@@ -240,13 +243,13 @@ def run():
                     num_examples_per_step = batch_size
                     examples_per_sec = num_examples_per_step / duration
                     sec_per_batch = float(duration)
-
-                    format_str = ('%s: step %d, loss = %.2f, accuracy=%.2f (%.1f examples/sec; %.3f '
+                    self.totalloss += loss_value
+                    self.totalacc += accuracy_value
+                    format_str = ('\r%s: step %d, avgloss = %.2f, loss = %.2f, avgacc= %.2f ,accuracy=%.2f (%.1f examples/sec; %.3f '
                         'sec/batch)')
-                    print (format_str % (datetime.time(), self._step, loss_value, accuracy_value,
+                    sys.stdout.write(format_str % (datetime.time(), self._step, self.totalloss/self._step, loss_value, self.totalacc/self._step, accuracy_value,
                                examples_per_sec, sec_per_batch))
-
-
+                    sys.stdout.flush()
 
         max_step = num_epochs*num_steps_per_epoch
 
@@ -258,7 +261,7 @@ def run():
                                                                 tf.train.NanTensorHook(loss),
                                                                 _LoggerHook()],
                                                         config=tf.ConfigProto(log_device_placement=FLAGS.log_device_placement),
-                                                        save_checkpoint_secs=300,
+                                                        save_checkpoint_secs=1200,
                                                         save_summaries_steps=100)
 
         #Running session:

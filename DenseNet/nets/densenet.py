@@ -83,7 +83,7 @@ def densenet(inputs,
                          is_training=is_training), \
                 slim.arg_scope([slim.conv2d, _conv, _block,
                          _dense_block, _transition_block]), \
-                                    slim.arg_scope([_conv]):
+                                    slim.arg_scope([_conv], dropout=dropout_rate):
             net = inputs
 
         # initial convolution
