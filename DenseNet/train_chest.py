@@ -211,7 +211,6 @@ def run():
         #State the metrics that you want to predict. We get a predictions that is not one_hot_encoded.
         predictions = tf.squeeze(tf.argmax(end_points['Predictions'], 3))
         probabilities = end_points['Predictions']
-        gen_acc , accuracy_update = tf.metrics.accuracy(labels, predictions)
         accuracy = tf.reduce_mean(tf.cast(tf.equal(labels, predictions), tf.float32))
         metrics_op = tf.group(accuracy_update, probabilities)
 
@@ -219,7 +218,6 @@ def run():
         tf.summary.scalar('losses/Total_Loss', total_loss)
         tf.summary.scalar('accuracy', accuracy)
         tf.summary.scalar('learning_rate', lr)
-        tf.summary.scalar('gen_accuracy', gen_acc)
         tf.summary.histogram('probabilities', probabilities)
         my_summary_op = tf.summary.merge_all()
 
