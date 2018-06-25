@@ -165,7 +165,7 @@ def run():
     with tf.Graph().as_default() as graph:
         tf.logging.set_verbosity(tf.logging.INFO) #Set the verbosity to INFO level
 
-        dataset = get_dataset("train", dataset_dir, file_pattern=file_pattern)
+        dataset = get_dataset("validation", dataset_dir, file_pattern=file_pattern)
         images,_, oh_labels, labels = load_batch(dataset, batch_size)
 
         #Calcul of batches/epoch, number of steps after decay learning rate
@@ -180,7 +180,7 @@ def run():
         excluding = ['densenet121/logits']
         variable_to_restore = slim.get_variables_to_restore(exclude=excluding)
         slim.assign_from_checkpoint(checkpoint_file, variable_to_restore)
-        logit = tf.squeeze(tf.squeeze(logits, [1]),[1])
+        logit = tf.squeeze(logits)
 
         #Defining losses and regulization ops:
         loss = tf.losses.softmax_cross_entropy(onehot_labels = oh_labels, logits = logit)
@@ -213,7 +213,6 @@ def run():
         predictions = tf.squeeze(tf.argmax(end_points['Predictions'], 3))
         probabilities = end_points['Predictions']
         accuracy = tf.reduce_mean(tf.cast(tf.equal(labels, predictions), tf.float32))
-        metrics_op = tf.group(accuracy_update, probabilities)
 
         #Now finally create all the summaries you need to monitor and group them into one summary op.
         tf.summary.scalar('losses/Total_Loss', total_loss)
