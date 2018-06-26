@@ -5,7 +5,7 @@ from tensorflow.python.platform import tf_logging as logging
 
 import nets.densenet as densenet
 import preprocessing.densenet_pre as dp
-from research.slim.preprocessing import vgg_preprocessing
+
 
 import os
 import sys
@@ -94,6 +94,8 @@ def get_dataset(phase_name, dataset_dir, file_pattern=file_pattern, file_pattern
     feature = {
         'image/encoded':tf.FixedLenFeature((), tf.string, default_value=''),
         'image/format': tf.FixedLenFeature((), tf.string, default_value='jpg'),
+        'image/height': tf.FixedLenFeature((), tf.int64),
+        'image/width': tf.FixedLenFeature((), tf.int64),
         'image/class/label':tf.FixedLenFeature((), tf.int64,default_value=tf.zeros([], dtype=tf.int64)),
     }
 
@@ -139,6 +141,7 @@ def load_batch(dataset, batch_size, height=image_size, width=image_size,is_train
     raw_image, label = provider.get(['image','label'])
     #Preprocessing using inception_preprocessing:
     image = dp.preprocess_image(raw_image, height, width, is_training)
+
     one_hot_labels = slim.one_hot_encoding(label, dataset.num_classes)
     #As for the raw images, we just do a simple reshape to batch it up
     raw_image = tf.expand_dims(raw_image, 0)
