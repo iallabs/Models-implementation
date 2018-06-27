@@ -179,8 +179,9 @@ def run():
         #Create the model inference
         with slim.arg_scope(densenet.densenet_arg_scope(is_training=True)):
             logits, end_points = densenet.densenet121(images, num_classes = dataset.num_classes, is_training = True)
-
+        
         excluding = ['densenet121/logits']
+
         variable_to_restore = slim.get_variables_to_restore(exclude=excluding)
         slim.assign_from_checkpoint(checkpoint_file, variable_to_restore)
         logit = tf.squeeze(logits)

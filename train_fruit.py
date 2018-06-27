@@ -5,8 +5,8 @@ from tensorflow.python.platform import tf_logging as logging
 
 import research.slim.nets.mobilenet_v1 as mobilenet_v1
 
-from utils.gen_utils import load_batch, get_dataset
-
+from utils.gen_utils import load_batch, get_dataset, load_batch_dense
+from eval_fruit import evaluate
 import os
 import sys
 import time
@@ -32,12 +32,11 @@ checkpoint_file= FLAGS.ckpt
 
 image_size = 224
 #Nombre de classes à prédire
-num_class = 65
 
-file_pattern = "fruit_%s_*.tfrecord"
-file_pattern_for_counting = "fruit"
+file_pattern = "chest_%s_*.tfrecord"
+file_pattern_for_counting = "chest"
 #Création d'un dictionnaire pour reférer à chaque label
-labels_to_name = {0:'Apple Braeburn', 
+"""labels_to_name = {0:'Apple Braeburn', 
                 1:'Apple Golden 1',
                 2:'Apple Golden 2', 
                 3:'Apple Golden 3',
@@ -102,14 +101,25 @@ labels_to_name = {0:'Apple Braeburn',
                 62: 'Strawberry',
                 63: 'Tamarillo',
                 64: 'Tangelo'
-                }
-
-#Create a dictionary that will help people understand your dataset better. This is required by the Dataset class later.
-
-
+                }"""
+labels_to_name = {0:'No Finding', 
+                1:'Atelectasis',
+                2:'Cardiomegaly', 
+                3:'Effusion',
+                4: 'Infiltration',
+                5: 'Mass',
+                6: 'Nodule',
+                7: 'Pneumonia',
+                8: 'Pneumothorax',
+                9: 'Consolidation',
+                10: 'Edema',
+                11: 'Emphysema',
+                12: 'Fibrosis',
+                13: 'Pleural_Thickening',
+                14: 'Hernia'}
 
 #=======Training Informations======#
-#Nombre d'époques pour l'entraîen
+#Nombre d'époques pour l'entraînement
 num_epochs = 35
 
 #State your batch size
@@ -131,7 +141,7 @@ def run():
         tf.logging.set_verbosity(tf.logging.INFO) #Set the verbosity to INFO level
 
         dataset = get_dataset("train", dataset_dir, file_pattern=file_pattern, file_pattern_for_counting=file_pattern_for_counting, labels_to_name=labels_to_name)
-        images,_, oh_labels, labels = load_batch(dataset, batch_size, image_size, image_size)
+        images,_, oh_labels, labels = load_batch_dense(dataset, batch_size, image_size, image_size)
 
         #Calcul of batches/epoch, number of steps after decay learning rate
         num_batches_per_epoch = int(dataset.num_samples / batch_size)
@@ -174,14 +184,12 @@ def run():
         probabilities = end_points['Predictions']
         names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({
             'Accuracy': tf.metrics.accuracy(labels, predictions),
-            'True_positives': tf.metrics.true_positives(labels, predictions),
-            'False_positives': tf.metrics.false_positives(labels, predictions),
-            'False_negatives': tf.metrics.false_negatives(labels, predictions),
-            'True_negatives': tf.metrics.true_negatives(labels, predictions),
+            'recall_id_0': tf.metrics.recall_at_k(oh_labels, probabilities, k=1, class_id=0),
+            'recall_id_7': tf.metrics.recall_at_k(oh_labels, probabilities, k=1, class_id=7)
             })
 
         for name, value in names_to_values.items():
-            summary_name = 'eval/%s' % name
+            summary_name = 'train/%s' % name
             op = tf.summary.scalar(summary_name, value, collections=[])
             tf.add_to_collection(tf.GraphKeys.SUMMARIES, op)
 
@@ -238,7 +246,7 @@ def run():
                                                         config=tf.ConfigProto(log_device_placement=FLAGS.log_device_placement),
                                                         save_checkpoint_secs=300,
                                                         save_summaries_steps=100)
-
+        i = 0
         #Running session:
         with supervisor as sess:
             ckpt = tf.train.get_checkpoint_state(FLAGS.train_dir)
@@ -248,7 +256,18 @@ def run():
             else:
                 saver.restore(sess, checkpoint_file)
             while not sess.should_stop():
+                if (i+1) % num_steps_per_epoch == 0:
+                    ckpt_eval = tf.train.get_checkpoint_state(FLAGS.train_dir)
+                    evaluate(ckpt_eval.model_checkpoint_path,
+                             dataset_dir,
+                             file_pattern,
+                             file_pattern_for_counting,
+                             labels_to_name,
+                             batch_size,
+                             image_size,
+                            )
                 sess.run(train_op)
+                i += 1
 
 if __name__ == '__main__':
     run()

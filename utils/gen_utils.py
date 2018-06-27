@@ -1,7 +1,7 @@
 import tensorflow as tf
 import os
 from research.slim.preprocessing import inception_preprocessing
-
+import DenseNet.preprocessing.densenet_pre as dp
 slim = tf.contrib.slim
 
 items_to_descriptions = {
@@ -105,3 +105,41 @@ def load_batch(dataset, batch_size, height, width,is_training=True):
 
     return images, raw_images, one_hot_labels, labels
 
+def load_batch_dense(dataset, batch_size, height, width,is_training=True):
+
+    """ Fucntion for loading a train batch 
+    OUTPUTS:
+    - images(Tensor): a Tensor of the shape (batch_size, height, width, channels) that contain one batch of images
+    - labels(Tensor): the batch's labels with the shape (batch_size,) (requires one_hot_encoding).
+    """
+
+    #First, create a provider given by slim:
+    provider = slim.dataset_data_provider.DatasetDataProvider(
+        dataset,
+        common_queue_capacity = 24 + 3*batch_size,
+        common_queue_min = 24
+    )
+
+    raw_image, true_height, true_width, label = provider.get(['image','height','width','label'])
+
+    #Preprocessing using inception_preprocessing:
+    #Invert true_height and true_width to tf.int32 required by preprocess_image
+    image = dp.preprocess_image(raw_image, height, width, is_training)
+    
+
+    one_hot_labels = tf.cast(tf.one_hot(label, depth=dataset.num_classes), tf.int64)
+
+    #As for the raw images, we just do a simple reshape to batch it up
+    raw_image = tf.expand_dims(raw_image, 0)
+    raw_image = tf.image.resize_nearest_neighbor(raw_image, [height, width])
+    raw_image = tf.squeeze(raw_image)
+
+    #Batch up the image by enqueing the tensors internally in a FIFO queue and dequeueing many elements with tf.train.batch.
+    images, raw_images, one_hot_labels, labels = tf.train.batch(
+        [image, raw_image, one_hot_labels, label],
+        batch_size = batch_size,
+        num_threads = 4,
+        capacity = 4 * batch_size,
+        allow_smaller_final_batch = True)
+
+    return images, raw_images, one_hot_labels, labels
