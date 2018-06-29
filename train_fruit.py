@@ -33,10 +33,10 @@ checkpoint_file= FLAGS.ckpt
 image_size = 224
 #Nombre de classes à prédire
 
-file_pattern = "chest_%s_*.tfrecord"
-file_pattern_for_counting = "chest"
+file_pattern = "fruit_%s_*.tfrecord"
+file_pattern_for_counting = "fruit"
 #Création d'un dictionnaire pour reférer à chaque label
-"""labels_to_name = {0:'Apple Braeburn', 
+labels_to_name = {0:'Apple Braeburn', 
                 1:'Apple Golden 1',
                 2:'Apple Golden 2', 
                 3:'Apple Golden 3',
@@ -101,22 +101,8 @@ file_pattern_for_counting = "chest"
                 62: 'Strawberry',
                 63: 'Tamarillo',
                 64: 'Tangelo'
-                }"""
-labels_to_name = {0:'No Finding', 
-                1:'Atelectasis',
-                2:'Cardiomegaly', 
-                3:'Effusion',
-                4: 'Infiltration',
-                5: 'Mass',
-                6: 'Nodule',
-                7: 'Pneumonia',
-                8: 'Pneumothorax',
-                9: 'Consolidation',
-                10: 'Edema',
-                11: 'Emphysema',
-                12: 'Fibrosis',
-                13: 'Pleural_Thickening',
-                14: 'Hernia'}
+                }
+
 
 #=======Training Informations======#
 #Nombre d'époques pour l'entraînement
@@ -150,11 +136,23 @@ def run():
 
         #Create the model inference
         """with slim.arg_scope(mobilenet_v1.mobilenet_v1_arg_scope(is_training=True)):"""
-        logits, end_points = mobilenet_v1.mobilenet_v1_050(images, num_classes = dataset.num_classes, is_training = True)
+        #TODO: Check mobilenet_v1 module, var "excluding
+        net, end_points = mobilenet_v1.mobilenet_v1_050(images, num_classes = None, is_training = True)
 
         excluding = ['MobilenetV1/Logits', 'MobilenetV1/AuxLogits']
         variable_to_restore = slim.get_variables_to_restore(exclude=excluding)
-        init_assign_op, init_feed_dict = slim.assign_from_checkpoint(checkpoint_file, variable_to_restore)
+        """init_assign_op, init_feed_dict = slim.assign_from_checkpoint(checkpoint_file, variable_to_restore)"""
+
+        #We reconstruct a FCN block on top of our final conv layer. 
+        net = slim.dropout(net, keep_prob=0.5, scope='Dropout_1b')
+        net = slim.conv2d(net, 512, [1,1], activation_fn=None, normalizer_fn=None, scope='Conv2d_1c_1x1')
+        net = slim.dropout(net, keep_prob=0.5, scope='Dropout_1b')
+        net = slim.conv2d(net, 256, [1,1], activation_fn=None, normalizer_fn=None, scope='Conv2d_1c_1x1_1')
+        logits = slim.conv2d(net, dataset.num_classes, [1, 1], activation_fn=None,
+                             normalizer_fn=None, scope='Conv2d_1c_1x1_2')
+        logits = tf.nn.relu(logits, name='final_relu')
+        logits = tf.squeeze(logits, [1, 2], name='SpatialSqueeze')
+        end_points['Predictions'] = logits
 
         #Defining losses and regulization ops:
         loss = tf.losses.softmax_cross_entropy(onehot_labels = oh_labels, logits = logits)
@@ -184,8 +182,6 @@ def run():
         probabilities = end_points['Predictions']
         names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({
             'Accuracy': tf.metrics.accuracy(labels, predictions),
-            'recall_id_0': tf.metrics.recall_at_k(oh_labels, probabilities, k=1, class_id=0),
-            'recall_id_7': tf.metrics.recall_at_k(oh_labels, probabilities, k=1, class_id=7)
             })
 
         for name, value in names_to_values.items():
@@ -199,6 +195,7 @@ def run():
         accuracy = tf.reduce_mean(tf.cast(tf.equal(labels, predictions), tf.float32))
 
         #Now finally create all the summaries you need to monitor and group them into one summary op.
+        tf.summary.scalar('accuracy_perso', accuracy)
         tf.summary.scalar('losses/Total_Loss', total_loss)
         tf.summary.scalar('learning_rate', lr)
         tf.summary.histogram('probabilities', probabilities)
