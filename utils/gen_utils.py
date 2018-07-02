@@ -88,7 +88,7 @@ def load_batch(dataset, batch_size, height, width,is_training=True):
     image = tf.image.resize_nearest_neighbor(image,[height,width])
     image = tf.squeeze(image)
 
-    one_hot_labels = tf.cast(tf.one_hot(label, depth=dataset.num_classes), tf.int64)
+    one_hot_labels = tf.cast(tf.one_hot(label, depth=dataset.num_classes, on_value=1.0, off_value = 0.0), tf.int64)
 
     #As for the raw images, we just do a simple reshape to batch it up
     raw_image = tf.expand_dims(raw_image, 0)
@@ -127,7 +127,7 @@ def load_batch_dense(dataset, batch_size, height, width,is_training=True):
     image = dp.preprocess_image(raw_image, height, width, is_training)
     
 
-    one_hot_labels = tf.cast(tf.one_hot(label, depth=dataset.num_classes), tf.int64)
+    one_hot_labels = tf.cast(tf.one_hot(label, depth=dataset.num_classes, on_value=1.0, off_value=0.0), tf.int64)
 
     #As for the raw images, we just do a simple reshape to batch it up
     raw_image = tf.expand_dims(raw_image, 0)

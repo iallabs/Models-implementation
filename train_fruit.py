@@ -7,6 +7,7 @@ import research.slim.nets.mobilenet_v1 as mobilenet_v1
 
 from utils.gen_utils import load_batch, get_dataset, load_batch_dense
 from eval_fruit import evaluate
+
 import os
 import sys
 import time
@@ -32,8 +33,9 @@ checkpoint_file= FLAGS.ckpt
 
 image_size = 224
 #Nombre de classes à prédire
-
-file_pattern = "fruit_%s_*.tfrecord"
+file_pattern = "chest_%s_*.tfrecord"
+file_pattern_for_counting = "chest"
+"""file_pattern = "fruit_%s_*.tfrecord"
 file_pattern_for_counting = "fruit"
 #Création d'un dictionnaire pour reférer à chaque label
 labels_to_name = {0:'Apple Braeburn', 
@@ -101,8 +103,25 @@ labels_to_name = {0:'Apple Braeburn',
                 62: 'Strawberry',
                 63: 'Tamarillo',
                 64: 'Tangelo'
-                }
+                }"""
 
+labels_to_name = {
+                0:'No Finding', 
+                1:'Atelectasis',
+                2:'Cardiomegaly', 
+                3:'Effusion',
+                4: 'Infiltration',
+                5: 'Mass',
+                6: 'Nodule',
+                7: 'Pneumonia',
+                8: 'Pneumothorax',
+                9: 'Consolidation',
+                10: 'Edema',
+                11: 'Emphysema',
+                12: 'Fibrosis',
+                13: 'Pleural_Thickening',
+                14: 'Hernia'
+                }
 
 #=======Training Informations======#
 #Nombre d'époques pour l'entraînement
@@ -112,8 +131,8 @@ num_epochs = 35
 batch_size = 16
 
 #Learning rate information and configuration (Up to you to experiment)
-initial_learning_rate = 0.0005
-learning_rate_decay_factor = 0.7
+initial_learning_rate = 0.1
+learning_rate_decay_factor = 0.5
 num_epochs_before_decay = 1
 
 def run():

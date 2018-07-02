@@ -177,7 +177,7 @@ def run():
         variables_to_restore = slim.get_variables_to_restore()
         
         
-        logit = tf.squeeze(tf.squeeze(logits, [1]),[1])  
+        logit = tf.squeeze(logits)
         predictions = tf.squeeze(tf.argmax(end_points['Predictions'], 3))
         
         #Define the metrics to evaluate
