@@ -33,9 +33,8 @@ checkpoint_file= FLAGS.ckpt
 
 image_size = 224
 #Nombre de classes à prédire
-file_pattern = "chest_%s_*.tfrecord"
-file_pattern_for_counting = "chest"
-"""file_pattern = "fruit_%s_*.tfrecord"
+
+file_pattern = "fruit_%s_*.tfrecord"
 file_pattern_for_counting = "fruit"
 #Création d'un dictionnaire pour reférer à chaque label
 labels_to_name = {0:'Apple Braeburn', 
@@ -103,9 +102,9 @@ labels_to_name = {0:'Apple Braeburn',
                 62: 'Strawberry',
                 63: 'Tamarillo',
                 64: 'Tangelo'
-                }"""
+                }
 
-labels_to_name = {
+"""labels_to_name = {
                 0:'No Finding', 
                 1:'Atelectasis',
                 2:'Cardiomegaly', 
@@ -121,7 +120,7 @@ labels_to_name = {
                 12: 'Fibrosis',
                 13: 'Pleural_Thickening',
                 14: 'Hernia'
-                }
+                }"""
 
 #=======Training Informations======#
 #Nombre d'époques pour l'entraînement
@@ -131,7 +130,7 @@ num_epochs = 35
 batch_size = 16
 
 #Learning rate information and configuration (Up to you to experiment)
-initial_learning_rate = 0.1
+initial_learning_rate = 0.0005
 learning_rate_decay_factor = 0.5
 num_epochs_before_decay = 1
 
@@ -146,7 +145,7 @@ def run():
         tf.logging.set_verbosity(tf.logging.INFO) #Set the verbosity to INFO level
 
         dataset = get_dataset("train", dataset_dir, file_pattern=file_pattern, file_pattern_for_counting=file_pattern_for_counting, labels_to_name=labels_to_name)
-        images,_, oh_labels, labels = load_batch_dense(dataset, batch_size, image_size, image_size)
+        images,_, oh_labels, labels = load_batch(dataset, batch_size, image_size, image_size)
 
         #Calcul of batches/epoch, number of steps after decay learning rate
         num_batches_per_epoch = int(dataset.num_samples / batch_size)
