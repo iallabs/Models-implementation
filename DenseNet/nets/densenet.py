@@ -13,7 +13,7 @@ def _global_avg_pool2d(inputs, scope=None,outputs=None):
 def _conv(inputs, number_filters, kernel_size, strides=1, dropout=None, scope=None, outputs=None):
     with tf.variable_scope(scope, 'conv_op', [inputs]) as v_scope:
         net = slim.batch_norm(inputs)
-        net = tf.nn.relu(net)
+        net = tf.nn.sigmoid(net)
         net = slim.conv2d(net, number_filters, kernel_size)
         if dropout:
             net = tf.nn.dropout(net, keep_prob=dropout)
@@ -63,7 +63,7 @@ def densenet(inputs,
              growth_rate=None,
              number_filters=None,
              number_layers=None,
-             dropout_rate=None,
+             dropout_rate=0.999,
              is_training=True,
              reuse=None,
              scope=None):
@@ -90,7 +90,7 @@ def densenet(inputs,
       
             net = slim.conv2d(net, number_filters, 7, stride=2, scope='conv1')
             net = slim.batch_norm(net)
-            net = tf.nn.relu(net)
+            net = tf.nn.sigmoid(net)
             net = slim.max_pool2d(net, 3, stride=2, padding='SAME')
 
         # blocks
@@ -114,7 +114,7 @@ def densenet(inputs,
             # final block
             with tf.variable_scope('final_block', [inputs]):
                 net = slim.batch_norm(net)
-                net = tf.nn.relu(net)
+                net = tf.nn.sigmoid(net)
                 net = _global_avg_pool2d(net, scope='global_avg_pool')
             net = slim.conv2d(net, num_classes, 1,
                             biases_initializer=tf.zeros_initializer(),
