@@ -102,3 +102,28 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+.vscode
+
+# training heavy files
+
+*.ckpt
+*.meta
+*.index
+*.pbtxt
+*.cpkt*
+
+# tfevents
+*.tfevents*
+checkpoint
+
+# archives
+
+*.zip
+*.gz
+*.tar
+
+# images
+*.png
+*.jpeg
+*.jpg
