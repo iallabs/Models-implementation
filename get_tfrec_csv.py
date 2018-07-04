@@ -2,7 +2,7 @@ import random
 
 import tensorflow as tf
 
-from utils_csv import _dataset_exists, _get_infos, _convert_dataset
+from utils.utils_csv import _dataset_exists, _get_infos, _convert_dataset
 
 import pandas as pd
 

@@ -60,6 +60,8 @@ class ImageReader(object):
         assert image.shape[2] == 3
         return image
 
+    
+
 
 
 def _get_dataset_filename(dataset_dir, split_name, shard_id, tfrecord_filename, _NUM_SHARDS):
@@ -104,9 +106,7 @@ def _convert_dataset(split_name, grouped, class_names_to_ids, dataset_dir, tfrec
                 with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
                     start_ndx = shard_id * num_per_shard
                     end_ndx = min((shard_id+1) * num_per_shard, len(grouped))
-                    print(start_ndx)
-                    print(end_ndx)
-                    print(len(grouped))
+
                     for i in range(start_ndx, end_ndx):
                         sys.stdout.write('\r>> Converting image %d/%d shard %d' % (i+1, len(grouped), shard_id))
                         sys.stdout.flush()
@@ -123,8 +123,9 @@ def _convert_dataset(split_name, grouped, class_names_to_ids, dataset_dir, tfrec
                         class_id = class_names_to_ids[class_name]
                         example = image_to_tfexample(image_data, row['Image Index'].encode(), 'jpg'.encode(),
                                                     height, width, class_id)
+        
                         tfrecord_writer.write(example.SerializeToString())
-
+                        tfrecord_writer.flush()
     sys.stdout.write('\n')
     sys.stdout.flush()
 #############################################################

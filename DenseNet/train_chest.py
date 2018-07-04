@@ -4,10 +4,11 @@ from tensorflow.python.platform import gfile
 from tensorflow.python.platform import tf_logging as logging
 
 import nets.densenet as densenet
+import preprocessing.densenet_pre as dp
 
-from research.slim.preprocessing import vgg_preprocessing
 
 import os
+import sys
 import time
 import datetime
 
@@ -58,15 +59,15 @@ items_to_descriptions = {
 
 #=======Training Informations======#
 #Nombre d'époques pour l'entraîen
-num_epochs = 30
+num_epochs = 60
 
 #State your batch size
 batch_size = 16
 
 #Learning rate information and configuration (Up to you to experiment)
-initial_learning_rate = 0.001
+initial_learning_rate = 0.0001
 learning_rate_decay_factor = 0.7
-num_epochs_before_decay = 3
+num_epochs_before_decay = 1
 
 #We now create a function that creates a Dataset class which will give us many TFRecord files to feed in the examples into a queue in parallel.
 def get_dataset(phase_name, dataset_dir, file_pattern=file_pattern, file_pattern_for_counting=file_pattern_for_counting):
@@ -93,6 +94,8 @@ def get_dataset(phase_name, dataset_dir, file_pattern=file_pattern, file_pattern
     feature = {
         'image/encoded':tf.FixedLenFeature((), tf.string, default_value=''),
         'image/format': tf.FixedLenFeature((), tf.string, default_value='jpg'),
+        'image/height': tf.FixedLenFeature((), tf.int64),
+        'image/width': tf.FixedLenFeature((), tf.int64),
         'image/class/label':tf.FixedLenFeature((), tf.int64,default_value=tf.zeros([], dtype=tf.int64)),
     }
 
@@ -137,7 +140,8 @@ def load_batch(dataset, batch_size, height=image_size, width=image_size,is_train
 
     raw_image, label = provider.get(['image','label'])
     #Preprocessing using inception_preprocessing:
-    image = vgg_preprocessing.preprocess_image(raw_image, height, width, is_training)
+    image = dp.preprocess_image(raw_image, height, width, is_training)
+
     one_hot_labels = slim.one_hot_encoding(label, dataset.num_classes)
     #As for the raw images, we just do a simple reshape to batch it up
     raw_image = tf.expand_dims(raw_image, 0)
@@ -175,11 +179,12 @@ def run():
         #Create the model inference
         with slim.arg_scope(densenet.densenet_arg_scope(is_training=True)):
             logits, end_points = densenet.densenet121(images, num_classes = dataset.num_classes, is_training = True)
-
+        
         excluding = ['densenet121/logits']
+
         variable_to_restore = slim.get_variables_to_restore(exclude=excluding)
         slim.assign_from_checkpoint(checkpoint_file, variable_to_restore)
-        logit = tf.squeeze(tf.squeeze(logits, [1]),[1])
+        logit = tf.squeeze(logits)
 
         #Defining losses and regulization ops:
         loss = tf.losses.softmax_cross_entropy(onehot_labels = oh_labels, logits = logit)
@@ -211,15 +216,12 @@ def run():
         #State the metrics that you want to predict. We get a predictions that is not one_hot_encoded.
         predictions = tf.squeeze(tf.argmax(end_points['Predictions'], 3))
         probabilities = end_points['Predictions']
-        gen_acc , accuracy_update = tf.metrics.accuracy(labels, predictions)
         accuracy = tf.reduce_mean(tf.cast(tf.equal(labels, predictions), tf.float32))
-        metrics_op = tf.group(accuracy_update, probabilities)
 
         #Now finally create all the summaries you need to monitor and group them into one summary op.
         tf.summary.scalar('losses/Total_Loss', total_loss)
         tf.summary.scalar('accuracy', accuracy)
         tf.summary.scalar('learning_rate', lr)
-        tf.summary.scalar('gen_accuracy', gen_acc)
         tf.summary.histogram('probabilities', probabilities)
         my_summary_op = tf.summary.merge_all()
 
@@ -229,6 +231,8 @@ def run():
 
             def begin(self):
                 self._step = global_step_init
+                self.totalloss=0.0
+                self.totalacc=0.0
 
             def before_run(self, run_context):
                 self._step += 1
@@ -242,13 +246,13 @@ def run():
                     num_examples_per_step = batch_size
                     examples_per_sec = num_examples_per_step / duration
                     sec_per_batch = float(duration)
-
-                    format_str = ('%s: step %d, loss = %.2f, accuracy=%.2f (%.1f examples/sec; %.3f '
+                    self.totalloss += loss_value
+                    self.totalacc += accuracy_value
+                    format_str = ('\r%s: step %d, avgloss = %.2f, loss = %.2f, avgacc= %.2f ,accuracy=%.2f (%.1f examples/sec; %.3f '
                         'sec/batch)')
-                    print (format_str % (datetime.time(), self._step, loss_value, accuracy_value,
+                    sys.stdout.write(format_str % (datetime.time(), self._step, self.totalloss/self._step, loss_value, self.totalacc/self._step, accuracy_value,
                                examples_per_sec, sec_per_batch))
-
-
+                    sys.stdout.flush()
 
         max_step = num_epochs*num_steps_per_epoch
 
@@ -260,7 +264,7 @@ def run():
                                                                 tf.train.NanTensorHook(loss),
                                                                 _LoggerHook()],
                                                         config=tf.ConfigProto(log_device_placement=FLAGS.log_device_placement),
-                                                        save_checkpoint_secs=300,
+                                                        save_checkpoint_secs=1200,
                                                         save_summaries_steps=100)
 
         #Running session:

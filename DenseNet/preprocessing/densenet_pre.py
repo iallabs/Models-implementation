@@ -11,7 +11,7 @@ _G_MEAN = 116.78
 _B_MEAN = 103.94
 
 _RESIZE_SIDE_MIN = 256
-_RESIZE_SIDE_MAX = 512
+_RESIZE_SIDE_MAX = 256
 
 
 def _crop(image, offset_height, offset_width, crop_height, crop_width):
@@ -54,7 +54,7 @@ def _crop(image, offset_height, offset_width, crop_height, crop_width):
     # define the crop size.
     with tf.control_dependencies([size_assertion]):
         image = tf.slice(image, offsets, cropped_shape)
-
+    tf.summary.image("rnd_cropped_image", tf.expand_dims(image,0))
     return tf.reshape(image, cropped_shape)
 
 
@@ -283,10 +283,12 @@ def preprocess_for_train(image,
     resize_side = tf.random_uniform(
         [], minval=resize_side_min, maxval=resize_side_max+1, dtype=tf.int32)
     image = _aspect_preserving_resize(image, resize_side)
-    image = _random_crop([image], output_height, output_width)[0]
+    """image = tf.image.adjust_contrast(image, 0.8)"""
+    image = _central_crop([image], output_height, output_width)[0]
     image.set_shape([output_height, output_width, 3])
     image = tf.to_float(image)
-    image = tf.image.random_flip_left_right(image)
+    image = tf.image.random_flip_left_right(image, seed=1)
+    tf.summary.image("rnd_croped_fliped_image", tf.expand_dims(image,0))
     return _mean_image_subtraction(image, [_R_MEAN, _G_MEAN, _B_MEAN])
 
 
@@ -310,6 +312,7 @@ def preprocess_for_eval(image, output_height, output_width, resize_side):
     image = _central_crop([image], output_height, output_width)[0]
     image.set_shape([output_height, output_width, 3])
     image = tf.to_float(image)
+    tf.summary.image("rnd_croped_fliped_image_eval", tf.expand_dims(image,0))
     return _mean_image_subtraction(image, [_R_MEAN, _G_MEAN, _B_MEAN])
 
 
