@@ -3,9 +3,11 @@ import tensorflow as tf
 from tensorflow.python.platform import gfile
 from tensorflow.python.platform import tf_logging as logging
 
-import nets.densenet as densenet
-import preprocessing.densenet_pre as dp
+import DenseNet.nets.densenet as densenet
+import DenseNet.preprocessing.densenet_pre as dp
 
+from eval_chest import evaluate
+from utils.gen_utils import load_batch, get_dataset, load_batch_dense
 
 import os
 import sys
@@ -66,97 +68,9 @@ batch_size = 16
 
 #Learning rate information and configuration (Up to you to experiment)
 initial_learning_rate = 0.0001
-learning_rate_decay_factor = 0.7
+learning_rate_decay_factor = 0.95
 num_epochs_before_decay = 1
 
-#We now create a function that creates a Dataset class which will give us many TFRecord files to feed in the examples into a queue in parallel.
-def get_dataset(phase_name, dataset_dir, file_pattern=file_pattern, file_pattern_for_counting=file_pattern_for_counting):
-    """Creates dataset based on phased_name(train or validation), datatset_dir. """
-    
-    #On vérifie si phase_name est 'train' ou 'validation'
-    if phase_name not in ['train', 'validation']:
-        raise ValueError('The phase_name %s is not recognized. Please input either train or validation as the phase_name' % (phase_name))
-
-    file_pattern_path = os.path.join(dataset_dir, file_pattern%(phase_name))
-
-    #Compte le nombre total d'examples dans tous les fichiers
-    num_samples = 0
-    file_pattern_for_counting = file_pattern_for_counting + '_' + phase_name
-    tfrecords_to_count = [os.path.join(dataset_dir, file) for file in os.listdir(dataset_dir) if file.startswith(file_pattern_for_counting)]
-    for tfrecord_file in tfrecords_to_count:
-        for record in tf.python_io.tf_record_iterator(tfrecord_file):
-            num_samples += 1
-
-    #Création d'un "reader", de type TFrecord pour ce cas précis:
-    reader = tf.TFRecordReader
-
-    #Create the keys_to_features dictionary for the decoder    
-    feature = {
-        'image/encoded':tf.FixedLenFeature((), tf.string, default_value=''),
-        'image/format': tf.FixedLenFeature((), tf.string, default_value='jpg'),
-        'image/height': tf.FixedLenFeature((), tf.int64),
-        'image/width': tf.FixedLenFeature((), tf.int64),
-        'image/class/label':tf.FixedLenFeature((), tf.int64,default_value=tf.zeros([], dtype=tf.int64)),
-    }
-
-    #Create the items_to_handlers dictionary for the decoder.
-    items_to_handlers = {
-        'image': slim.tfexample_decoder.Image(),
-        'label': slim.tfexample_decoder.Tensor('image/class/label'),
-    }
-
-    #Decoder, provided by slim
-    decoder = slim.tfexample_decoder.TFExampleDecoder(feature, items_to_handlers)
-
-    labels_map= labels_to_name
-
-    #create the dataset:
-    dataset = slim.dataset.Dataset(
-        data_sources = file_pattern_path,
-        decoder = decoder,
-        reader = reader,
-        num_readers = 4,
-        num_samples = num_samples,
-        num_classes = num_class,
-        labels_to_name = labels_map,
-        items_to_descriptions = items_to_descriptions)
-    
-    return dataset
-
-def load_batch(dataset, batch_size, height=image_size, width=image_size,is_training=True):
-
-    """ Fucntion for loading a train batch 
-    OUTPUTS:
-    - images(Tensor): a Tensor of the shape (batch_size, height, width, channels) that contain one batch of images
-    - labels(Tensor): the batch's labels with the shape (batch_size,) (requires one_hot_encoding).
-    """
-
-    #First, create a provider given by slim:
-    provider = slim.dataset_data_provider.DatasetDataProvider(
-        dataset,
-        common_queue_capacity = 24 + 3*batch_size,
-        common_queue_min = 24
-    )
-
-    raw_image, label = provider.get(['image','label'])
-    #Preprocessing using inception_preprocessing:
-    image = dp.preprocess_image(raw_image, height, width, is_training)
-
-    one_hot_labels = slim.one_hot_encoding(label, dataset.num_classes)
-    #As for the raw images, we just do a simple reshape to batch it up
-    raw_image = tf.expand_dims(raw_image, 0)
-    raw_image = tf.image.resize_nearest_neighbor(raw_image, [height, width])
-    raw_image = tf.squeeze(raw_image)
-
-    #Batch up the image by enqueing the tensors internally in a FIFO queue and dequeueing many elements with tf.train.batch.
-    images, raw_images, one_hot_labels, labels = tf.train.batch(
-        [image, raw_image, one_hot_labels, label],
-        batch_size = batch_size,
-        num_threads = 4,
-        capacity = 4 * batch_size,
-        allow_smaller_final_batch = True)
-
-    return images, raw_images, one_hot_labels, labels
 
 def run():
     #Create log_dir:
@@ -168,8 +82,8 @@ def run():
     with tf.Graph().as_default() as graph:
         tf.logging.set_verbosity(tf.logging.INFO) #Set the verbosity to INFO level
 
-        dataset = get_dataset("validation", dataset_dir, file_pattern=file_pattern)
-        images,_, oh_labels, labels = load_batch(dataset, batch_size)
+        dataset = get_dataset("validation", dataset_dir, file_pattern=file_pattern, file_pattern_for_counting=file_pattern_for_counting, labels_to_name=labels_to_name)
+        images,_, oh_labels, labels = load_batch_dense(dataset, batch_size, image_size, image_size)
 
         #Calcul of batches/epoch, number of steps after decay learning rate
         num_batches_per_epoch = int(dataset.num_samples / batch_size)
@@ -276,6 +190,16 @@ def run():
             else:
                 saver.restore(sess, checkpoint_file)
             while not sess.should_stop():
+                if (i+1) % num_steps_per_epoch == 0:
+                    ckpt_eval = tf.train.get_checkpoint_state(FLAGS.train_dir)
+                    evaluate(ckpt_eval.model_checkpoint_path,
+                             dataset_dir,
+                             file_pattern,
+                             file_pattern_for_counting,
+                             labels_to_name,
+                             batch_size,
+                             image_size,
+                            )
                 sess.run(train_op)
 
 if __name__ == '__main__':

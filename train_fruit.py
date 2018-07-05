@@ -131,7 +131,7 @@ batch_size = 16
 
 #Learning rate information and configuration (Up to you to experiment)
 initial_learning_rate = 0.0005
-learning_rate_decay_factor = 0.5
+learning_rate_decay_factor = 0.95
 num_epochs_before_decay = 1
 
 def run():
@@ -153,9 +153,9 @@ def run():
         decay_steps = int(num_epochs_before_decay * num_steps_per_epoch)
 
         #Create the model inference
-        """with slim.arg_scope(mobilenet_v1.mobilenet_v1_arg_scope(is_training=True)):"""
+        with slim.arg_scope(mobilenet_v1.mobilenet_v1_arg_scope(is_training=True)):
         #TODO: Check mobilenet_v1 module, var "excluding
-        net, end_points = mobilenet_v1.mobilenet_v1_050(images, num_classes = None, is_training = True)
+            net, end_points = mobilenet_v1.mobilenet_v1_050(images, num_classes = None, is_training = True)
 
         excluding = ['MobilenetV1/Logits', 'MobilenetV1/AuxLogits']
         variable_to_restore = slim.get_variables_to_restore(exclude=excluding)
