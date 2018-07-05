@@ -111,7 +111,7 @@ venv.bak/
 *.meta
 *.index
 *.pbtxt
-*.cpkt*
+*.ckpt*
 
 # tfevents
 *.tfevents*

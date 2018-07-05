@@ -42,17 +42,17 @@ def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counti
 
 
         #Create the model inference
-        """with slim.arg_scope(mobilenet_v1.mobilenet_v1_arg_scope(is_training=True)):"""
-        net, end_points = mobilenet_v1.mobilenet_v1_050(images, num_classes = None, is_training = False)
+        with slim.arg_scope(mobilenet_v1.mobilenet_v1_arg_scope(is_training=False)):
+            logits, end_points = mobilenet_v1.mobilenet_v1_050(images, num_classes = len(labels_to_name), is_training = False)
         
-        net = slim.dropout(net, keep_prob=0.5, scope='Dropout_1b')
+        """net = slim.dropout(net, keep_prob=0.5, scope='Dropout_1b')
         net = slim.conv2d(net, 512, [1,1], activation_fn=None, normalizer_fn=None, scope='Conv2d_1c_1x1')
         net = slim.dropout(net, keep_prob=0.5, scope='Dropout_1b')
         net = slim.conv2d(net, 256, [1,1], activation_fn=None, normalizer_fn=None, scope='Conv2d_1c_1x1_1', )
         logits = slim.conv2d(net, dataset.num_classes, [1, 1], activation_fn=None,
                              normalizer_fn=None, scope='Conv2d_1c_1x1_2')
         logits = tf.nn.relu(logits, name='final_relu')
-        logits = tf.squeeze(logits, [1, 2], name='SpatialSqueeze')
+        logits = tf.squeeze(logits, [1, 2], name='SpatialSqueeze')"""
         variables_to_restore = slim.get_variables_to_restore()
         end_points['Predictions'] = logits
         #Defining accuracy and predictions:

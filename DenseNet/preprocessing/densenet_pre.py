@@ -5,10 +5,15 @@ import tensorflow as tf
 
 
 slim = tf.contrib.slim
-
+#ImageNet RGB mean values (moyenne)
 _R_MEAN = 123.68
-_G_MEAN = 116.78
-_B_MEAN = 103.94
+_G_MEAN = 116.779
+_B_MEAN = 103.939
+
+#ImageNet standard deviation (écart-type)
+_R_STD = 58.39
+_G_STD = 57.12
+_B_STD = 57.37
 
 _RESIZE_SIDE_MIN = 256
 _RESIZE_SIDE_MAX = 256
@@ -167,7 +172,7 @@ def _central_crop(image_list, crop_height, crop_width):
 
 
 
-def _mean_image_subtraction(image, means):
+def _mean_image_subtraction(image, means, stds):
 
     """Subtracts the given means from each image channel.
     For example:
@@ -192,7 +197,8 @@ def _mean_image_subtraction(image, means):
         raise ValueError('len(means) must match the number of channels')
     channels = tf.split(axis=2, num_or_size_splits=num_channels, value=image)
     for i in range(num_channels):
-        channels[i] -= means[i]
+        channels[i] = (channels[i] - means[i])/stds[i]
+
     return tf.concat(axis=2, values=channels)
 
 
@@ -289,7 +295,7 @@ def preprocess_for_train(image,
     image = tf.to_float(image)
     image = tf.image.random_flip_left_right(image, seed=1)
     tf.summary.image("rnd_croped_fliped_image", tf.expand_dims(image,0))
-    return _mean_image_subtraction(image, [_R_MEAN, _G_MEAN, _B_MEAN])
+    return tf.image.per_image_standardization(image)
 
 
 
@@ -313,7 +319,8 @@ def preprocess_for_eval(image, output_height, output_width, resize_side):
     image.set_shape([output_height, output_width, 3])
     image = tf.to_float(image)
     tf.summary.image("rnd_croped_fliped_image_eval", tf.expand_dims(image,0))
-    return _mean_image_subtraction(image, [_R_MEAN, _G_MEAN, _B_MEAN])
+    """return _mean_image_subtraction(image, [_R_MEAN, _G_MEAN, _B_MEAN], [_R_STD, _G_STD, _B_STD])"""
+    return tf.image.per_image_standardization(image)
 
 
 

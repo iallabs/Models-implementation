@@ -145,7 +145,7 @@ def run():
         tf.logging.set_verbosity(tf.logging.INFO) #Set the verbosity to INFO level
 
         dataset = get_dataset("train", dataset_dir, file_pattern=file_pattern, file_pattern_for_counting=file_pattern_for_counting, labels_to_name=labels_to_name)
-        images,_, oh_labels, labels = load_batch(dataset, batch_size, image_size, image_size)
+        images,_, oh_labels, labels = load_batch_dense(dataset, batch_size, image_size, image_size)
 
         #Calcul of batches/epoch, number of steps after decay learning rate
         num_batches_per_epoch = int(dataset.num_samples / batch_size)
@@ -155,21 +155,21 @@ def run():
         #Create the model inference
         with slim.arg_scope(mobilenet_v1.mobilenet_v1_arg_scope(is_training=True)):
         #TODO: Check mobilenet_v1 module, var "excluding
-            net, end_points = mobilenet_v1.mobilenet_v1_050(images, num_classes = None, is_training = True)
+            logits, end_points = mobilenet_v1.mobilenet_v1_050(images, num_classes = len(labels_to_name), is_training = True)
 
         excluding = ['MobilenetV1/Logits', 'MobilenetV1/AuxLogits']
         variable_to_restore = slim.get_variables_to_restore(exclude=excluding)
         """init_assign_op, init_feed_dict = slim.assign_from_checkpoint(checkpoint_file, variable_to_restore)"""
 
         #We reconstruct a FCN block on top of our final conv layer. 
-        net = slim.dropout(net, keep_prob=0.5, scope='Dropout_1b')
+        """net = slim.dropout(net, keep_prob=0.5, scope='Dropout_1b')
         net = slim.conv2d(net, 512, [1,1], activation_fn=None, normalizer_fn=None, scope='Conv2d_1c_1x1')
         net = slim.dropout(net, keep_prob=0.5, scope='Dropout_1b')
         net = slim.conv2d(net, 256, [1,1], activation_fn=None, normalizer_fn=None, scope='Conv2d_1c_1x1_1')
         logits = slim.conv2d(net, dataset.num_classes, [1, 1], activation_fn=None,
                              normalizer_fn=None, scope='Conv2d_1c_1x1_2')
         logits = tf.nn.relu(logits, name='final_relu')
-        logits = tf.squeeze(logits, [1, 2], name='SpatialSqueeze')
+        logits = tf.squeeze(logits, [1, 2], name='SpatialSqueeze')"""
         end_points['Predictions'] = logits
 
         #Defining losses and regulization ops:
@@ -259,7 +259,7 @@ def run():
                                                                 tf.train.NanTensorHook(loss),
                                                                 _LoggerHook()],
                                                         config=tf.ConfigProto(log_device_placement=FLAGS.log_device_placement),
-                                                        save_checkpoint_secs=300,
+                                                        save_checkpoint_secs=120,
                                                         save_summaries_steps=100)
         i = 0
         #Running session:

@@ -85,33 +85,26 @@ labels_to_name = {0:'Apple Braeburn',
 tf.logging.set_verbosity(tf.logging.INFO)
 
 
-sample_images = ["D:/rasp_2.jpg","D:clemetine_2.jpg"]
+sample_images = ["D:/ChestXray-14/images/00000001_000.png","D:clemetine_2.jpg"]
 file_input = tf.placeholder(tf.string, ())
 image = tf.image.decode_jpeg(tf.read_file(file_input), channels=3)
 
 
-image = dp.preprocess_image(image, 224, 224, is_training=False)
-images_bis = tf.expand_dims(image,0)
+images = dp.preprocess_image(image, 224, 224, is_training=False)
+images_bis = tf.expand_dims(images,0)
 
-net, endpoints = mobilenet_v1.mobilenet_v1_050(images_bis, num_classes=None, is_training=False)
-net = slim.dropout(net, keep_prob=0.5, scope='Dropout_1b')
-net = slim.conv2d(net, 512, [1,1], activation_fn=None, normalizer_fn=None, scope='Conv2d_1c_1x1')
-net = slim.dropout(net, keep_prob=0.5, scope='Dropout_1b')
-net = slim.conv2d(net, 256, [1,1], activation_fn=None, normalizer_fn=None, scope='Conv2d_1c_1x1_1')
-logits = slim.conv2d(net, len(labels_to_name), [1, 1], activation_fn=None,
-                             normalizer_fn=None, scope='Conv2d_1c_1x1_2')
-logits = tf.nn.relu(logits, name='final_relu')
-logits = tf.squeeze(logits, [1, 2], name='SpatialSqueeze')
-logits = tf.nn.softmax(logits)
+logits, endpoints = mobilenet_v1.mobilenet_v1_050(images_bis, num_classes=len(labels_to_name), is_training=False)
+
 endpoints['Predictions'] = logits
 
 
 with tf.Session() as sess:
-  vars = slim.get_variables_to_restore()
+  """vars = slim.get_variables_to_restore()
   saver = tf.train.Saver(vars)
-  saver.restore(sess,  checkpoint_file)
+  saver.restore(sess,  checkpoint_file)"""
+  print(images.eval(feed_dict={file_input: sample_images[0]} ))
   
-  x = endpoints['Predictions'].eval(feed_dict={file_input: sample_images[1]})
+  """x = endpoints['Predictions'].eval(feed_dict={file_input: sample_images[1]})
 
 print("Prediction class:", labels_to_name[x.argmax()])
-print("Prediction value", x.max())
+print("Prediction value", x.max())"""
