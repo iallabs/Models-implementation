@@ -10,7 +10,7 @@ import os
 import numpy as np
 
 checkpoint_dir = os.getcwd()
-checkpoint_file = checkpoint_dir + "/train_fruit/training/model.ckpt-31687"
+checkpoint_file = checkpoint_dir + "/train_fruit/training/model.ckpt-8161"
 
 image_size = 224
 main_dir = "D:/train/train/"
@@ -88,9 +88,10 @@ tf.logging.set_verbosity(tf.logging.INFO)
 sample_images = ["D:/ChestXray-14/images/00000001_000.png","D:clemetine_2.jpg"]
 file_input = tf.placeholder(tf.string, ())
 image = tf.image.decode_jpeg(tf.read_file(file_input), channels=3)
-
+image = tf.image.convert_image_dtype(image, dtype=tf.float32)
 
 images = dp.preprocess_image(image, 224, 224, is_training=False)
+
 images_bis = tf.expand_dims(images,0)
 
 logits, endpoints = mobilenet_v1.mobilenet_v1_050(images_bis, num_classes=len(labels_to_name), is_training=False)
@@ -102,9 +103,9 @@ with tf.Session() as sess:
   """vars = slim.get_variables_to_restore()
   saver = tf.train.Saver(vars)
   saver.restore(sess,  checkpoint_file)"""
-  print(images.eval(feed_dict={file_input: sample_images[0]} ))
+  print(image.eval(feed_dict={file_input: sample_images[0]})[:,:,2])
   
-  """x = endpoints['Predictions'].eval(feed_dict={file_input: sample_images[1]})
+  """x = endpoints['Predictions'].eval(feed_dict={file_input: sample_images[1]})"""
 
-print("Prediction class:", labels_to_name[x.argmax()])
+"""print("Prediction class:", labels_to_name[x.argmax()])
 print("Prediction value", x.max())"""

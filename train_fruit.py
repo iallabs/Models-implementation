@@ -16,6 +16,7 @@ import datetime
 slim = tf.contrib.slim
 
 flags = tf.app.flags
+flags.DEFINE_float('gpu_p', 1.0, 'Float: allow gpu growth value to pass in config proto')
 flags.DEFINE_string('dataset_dir','D:/fruits/fruits-360','String: Your dataset directory')
 flags.DEFINE_string('train_dir', 'train_fruit/training', 'String: Your train directory')
 flags.DEFINE_boolean('log_device_placement', True,
@@ -25,7 +26,7 @@ FLAGS = flags.FLAGS
 
 #=======Dataset Informations=======#
 dataset_dir = FLAGS.dataset_dir
-
+gpu_p = FLAGS.gpu_p
 log_dir="log"
 
 #Emplacement du checkpoint file
@@ -33,9 +34,10 @@ checkpoint_file= FLAGS.ckpt
 
 image_size = 224
 #Nombre de classes à prédire
-
-file_pattern = "fruit_%s_*.tfrecord"
-file_pattern_for_counting = "fruit"
+file_pattern = "chest_%s_*.tfrecord"
+file_pattern_for_counting = "chest"
+"""file_pattern = "fruit_%s_*.tfrecord"
+file_pattern_for_counting = "fruit"""
 #Création d'un dictionnaire pour reférer à chaque label
 labels_to_name = {0:'Apple Braeburn', 
                 1:'Apple Golden 1',
@@ -130,7 +132,7 @@ num_epochs = 35
 batch_size = 16
 
 #Learning rate information and configuration (Up to you to experiment)
-initial_learning_rate = 0.0005
+initial_learning_rate = 0.001
 learning_rate_decay_factor = 0.95
 num_epochs_before_decay = 1
 
@@ -173,7 +175,7 @@ def run():
         end_points['Predictions'] = logits
 
         #Defining losses and regulization ops:
-        loss = tf.losses.softmax_cross_entropy(onehot_labels = oh_labels, logits = logits)
+        loss = tf.losses.sigmoid_cross_entropy(multi_class_labels = oh_labels, logits = logits)
         total_loss = tf.losses.get_total_loss()    #obtain the regularization losses as well
         
         #Create the global step for monitoring the learning_rate and training:
@@ -251,15 +253,17 @@ def run():
                     sys.stdout.write(format_str % (datetime.time(), self._step, self.totalloss/self._step, loss_value, self.totalacc/self._step, accuracy_value,
                                examples_per_sec, sec_per_batch))
 
-
-
+        #deFINE A ConfigProto to allow gpu device
+        config = tf.ConfigProto()
+        config.log_device_placement = True
+        config.gpu_options.per_process_gpu_memory_fraction = gpu_p
         #Define your supervisor for running a managed session:
         supervisor = tf.train.MonitoredTrainingSession(checkpoint_dir=FLAGS.train_dir,
                                                         hooks=[tf.train.StopAtStepHook(last_step=max_step),
                                                                 tf.train.NanTensorHook(loss),
                                                                 _LoggerHook()],
-                                                        config=tf.ConfigProto(log_device_placement=FLAGS.log_device_placement),
-                                                        save_checkpoint_secs=120,
+                                                        config=config,
+                                                        save_checkpoint_secs=630,
                                                         save_summaries_steps=100)
         i = 0
         #Running session:
