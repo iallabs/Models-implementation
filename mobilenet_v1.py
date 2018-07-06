@@ -6,6 +6,7 @@ from tensorflow.python.platform import gfile
 from research.slim.preprocessing import inception_preprocessing
 import DenseNet.preprocessing.densenet_pre as dp
 import cv2
+from matplotlib import pyplot as plt
 import os
 import numpy as np
 
@@ -85,25 +86,26 @@ labels_to_name = {0:'Apple Braeburn',
 tf.logging.set_verbosity(tf.logging.INFO)
 
 
-sample_images = ["D:/ChestXray-14/images/00000001_000.png","D:clemetine_2.jpg"]
+sample_images = ["D:/ChestXray-14/images/00000001_000.png","D:/fruits/fruits-360/Training/"+labels_to_name[0]+"/0_100.jpg","D:clemetine_2.jpg"]
 file_input = tf.placeholder(tf.string, ())
 image = tf.image.decode_jpeg(tf.read_file(file_input), channels=3)
-image = tf.image.convert_image_dtype(image, dtype=tf.float32)
 
-images = dp.preprocess_image(image, 224, 224, is_training=False)
+image_a = inception_preprocessing.preprocess_image(image, 224,224)
 
+"""images = dp.preprocess_image(image, 224, 224, is_training=False)
 images_bis = tf.expand_dims(images,0)
 
 logits, endpoints = mobilenet_v1.mobilenet_v1_050(images_bis, num_classes=len(labels_to_name), is_training=False)
 
-endpoints['Predictions'] = logits
+endpoints['Predictions'] = logits"""
 
 
 with tf.Session() as sess:
   """vars = slim.get_variables_to_restore()
   saver = tf.train.Saver(vars)
   saver.restore(sess,  checkpoint_file)"""
-  print(image.eval(feed_dict={file_input: sample_images[0]})[:,:,2])
+  img = image_a.eval(feed_dict={file_input: sample_images[0]})
+  print(img)
   
   """x = endpoints['Predictions'].eval(feed_dict={file_input: sample_images[1]})"""
 

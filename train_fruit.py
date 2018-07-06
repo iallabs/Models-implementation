@@ -39,7 +39,7 @@ file_pattern_for_counting = "chest"
 """file_pattern = "fruit_%s_*.tfrecord"
 file_pattern_for_counting = "fruit"""
 #Création d'un dictionnaire pour reférer à chaque label
-labels_to_name = {0:'Apple Braeburn', 
+"""labels_to_name = {0:'Apple Braeburn', 
                 1:'Apple Golden 1',
                 2:'Apple Golden 2', 
                 3:'Apple Golden 3',
@@ -104,9 +104,9 @@ labels_to_name = {0:'Apple Braeburn',
                 62: 'Strawberry',
                 63: 'Tamarillo',
                 64: 'Tangelo'
-                }
+                }"""
 
-"""labels_to_name = {
+labels_to_name = {
                 0:'No Finding', 
                 1:'Atelectasis',
                 2:'Cardiomegaly', 
@@ -122,7 +122,7 @@ labels_to_name = {0:'Apple Braeburn',
                 12: 'Fibrosis',
                 13: 'Pleural_Thickening',
                 14: 'Hernia'
-                }"""
+                }
 
 #=======Training Informations======#
 #Nombre d'époques pour l'entraînement
@@ -147,7 +147,7 @@ def run():
         tf.logging.set_verbosity(tf.logging.INFO) #Set the verbosity to INFO level
 
         dataset = get_dataset("train", dataset_dir, file_pattern=file_pattern, file_pattern_for_counting=file_pattern_for_counting, labels_to_name=labels_to_name)
-        images,_, oh_labels, labels = load_batch_dense(dataset, batch_size, image_size, image_size)
+        images,_, oh_labels, labels = load_batch(dataset, batch_size, image_size, image_size)
 
         #Calcul of batches/epoch, number of steps after decay learning rate
         num_batches_per_epoch = int(dataset.num_samples / batch_size)
@@ -159,9 +159,9 @@ def run():
         #TODO: Check mobilenet_v1 module, var "excluding
             logits, end_points = mobilenet_v1.mobilenet_v1_050(images, num_classes = len(labels_to_name), is_training = True)
 
-        excluding = ['MobilenetV1/Logits', 'MobilenetV1/AuxLogits']
+        excluding = ['MobilenetV1/Logits', 'MobilenetV1/AuxLogits', 'MobilenetV1/Predictions']
         variable_to_restore = slim.get_variables_to_restore(exclude=excluding)
-        """init_assign_op, init_feed_dict = slim.assign_from_checkpoint(checkpoint_file, variable_to_restore)"""
+
 
         #We reconstruct a FCN block on top of our final conv layer. 
         """net = slim.dropout(net, keep_prob=0.5, scope='Dropout_1b')
@@ -175,7 +175,7 @@ def run():
         end_points['Predictions'] = logits
 
         #Defining losses and regulization ops:
-        loss = tf.losses.sigmoid_cross_entropy(multi_class_labels = oh_labels, logits = logits)
+        loss = tf.reduce_mean(tf.losses.sigmoid_cross_entropy(multi_class_labels = oh_labels, logits = logits))
         total_loss = tf.losses.get_total_loss()    #obtain the regularization losses as well
         
         #Create the global step for monitoring the learning_rate and training:
@@ -197,8 +197,15 @@ def run():
         #Define Optimizer with decay learning rate:
         optimizer = tf.train.AdamOptimizer(learning_rate = lr)      
 
+        
+
+        #Create the train_op#.
+        train_op = optimizer.minimize(total_loss, global_step=global_step)
+        """train_op = slim.learning.create_train_op(total_loss, optimizer)"""
+
         #State the metrics that you want to predict. We get a predictions that is not one_hot_encoded.
-        predictions = tf.argmax(end_points['Predictions'], 1)
+        #FIXME: Replace classifier function (sigmoid / softmax)
+        predictions = tf.argmax(tf.nn.sigmoid(end_points['Predictions']), 1)
         probabilities = end_points['Predictions']
         names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({
             'Accuracy': tf.metrics.accuracy(labels, predictions),
@@ -209,12 +216,10 @@ def run():
             op = tf.summary.scalar(summary_name, value, collections=[])
             tf.add_to_collection(tf.GraphKeys.SUMMARIES, op)
 
-        #Create the train_op.
-        train_op = slim.learning.create_train_op(total_loss, optimizer)
-
+        #Default accuracy
         accuracy = tf.reduce_mean(tf.cast(tf.equal(labels, predictions), tf.float32))
 
-        #Now finally create all the summaries you need to monitor and group them into one summary op.
+        #Now finally create all the summaries you need to monitor and group them into one summary op.#
         tf.summary.scalar('accuracy_perso', accuracy)
         tf.summary.scalar('losses/Total_Loss', total_loss)
         tf.summary.scalar('learning_rate', lr)
@@ -264,7 +269,7 @@ def run():
                                                                 _LoggerHook()],
                                                         config=config,
                                                         save_checkpoint_secs=630,
-                                                        save_summaries_steps=100)
+                                                        save_summaries_steps=20)
         i = 0
         #Running session:
         with supervisor as sess:

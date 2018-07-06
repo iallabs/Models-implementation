@@ -83,10 +83,8 @@ def load_batch(dataset, batch_size, height, width,is_training=True):
     raw_image, true_height, true_width, label = provider.get(['image','height','width','label'])
     raw_image = tf.image.convert_image_dtype(raw_image, dtype=tf.float32)  #Preprocessing using inception_preprocessing:
     #Invert true_height and true_width to tf.int32 required by preprocess_image
-    image = inception_preprocessing.preprocess_image(raw_image, tf.cast(true_height,tf.int32), tf.cast(true_width, tf.int32), is_training)
-    image = tf.expand_dims(image, 0)
-    image = tf.image.resize_nearest_neighbor(image,[height,width])
-    image = tf.squeeze(image)
+    image = inception_preprocessing.preprocess_image(raw_image, height, width, is_training)
+
 
     one_hot_labels = tf.cast(tf.one_hot(label, depth=dataset.num_classes, on_value=1.0, off_value = 0.0), tf.int64)
 
