@@ -27,7 +27,7 @@ def _block(inputs, number_filters, scope=None, outputs=None, data_format='NHWC')
         net = inputs
         net = _conv(net, number_filters*4, 1, scope="x1")
         net = _conv(net, number_filters,3, scope="x2")
-        if data_format="NHWC":
+        if data_format=="NHWC":
             net = tf.concat([inputs, net], 3)
         else:
             net = tf.concat([inputs, net], 1)
