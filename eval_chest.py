@@ -65,7 +65,7 @@ batch_size = 16
 def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counting, labels_to_name, batch_size, image_size):
     #Create log_dir:
     if not os.path.exists(log_dir):
-        os.mkdir(log_dir)
+        os.mkdir(os.getcwd+'/'+log_dir)
     tf.logging.set_verbosity(tf.logging.INFO) #Set the verbosity to INFO level
 
     with tf.Graph().as_default():
@@ -74,7 +74,7 @@ def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counti
         # Adding the graph:
 
         dataset = get_dataset("validation", dataset_dir, file_pattern=file_pattern, file_pattern_for_counting=file_pattern_for_counting, labels_to_name=labels_to_name)
-        images,_, oh_labels, labels = load_batch(dataset, batch_size, image_size, image_size)
+        images,_, oh_labels, labels = load_batch_dense(dataset, batch_size, image_size, image_size, is_training=False)
 
         #Calcul of batches/epoch, number of steps after decay learning rate
         num_batches_per_epoch = int(dataset.num_samples / batch_size)
@@ -88,7 +88,7 @@ def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counti
         
         
         logit = tf.squeeze(logits)
-        predictions = tf.squeeze(tf.argmax(end_points['Predictions'], 3))
+        predictions = tf.argmax(tf.squeeze(end_points['Predictions']),1)
         
         #Define the metrics to evaluate
         names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({

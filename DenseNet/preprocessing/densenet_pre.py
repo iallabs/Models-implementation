@@ -17,7 +17,7 @@ _G_STD = 57.12
 _B_STD = 57.375
 
 _RESIZE_SIDE_MIN = 256
-_RESIZE_SIDE_MAX = 512
+_RESIZE_SIDE_MAX = 256
 
 
 def _crop(image, offset_height, offset_width, crop_height, crop_width):
@@ -301,6 +301,7 @@ def preprocess_for_train(image,
     tf.summary.image("rnd_croped_fliped_image", tf.expand_dims(image,0))
 
     image = _mean_image_subtraction(image, [_R_MEAN, _G_MEAN, _B_MEAN], [_R_STD, _G_STD, _B_STD])
+    tf.summary.image("final_image", tf.expand_dims(image * _SCALE_FACTOR,0))
     return image*_SCALE_FACTOR
     """return tf.image.per_image_standardization(image)"""
 
@@ -328,6 +329,7 @@ def preprocess_for_eval(image, output_height, output_width, resize_side):
     tf.summary.image("rnd_croped_fliped_image_eval", tf.expand_dims(image,0))
 
     image = _mean_image_subtraction(image, [_R_MEAN, _G_MEAN, _B_MEAN], [_R_STD, _G_STD, _B_STD])
+    tf.summary.image("final_image", tf.expand_dims(image * _SCALE_FACTOR,0))
     return image * _SCALE_FACTOR
     """return tf.image.per_image_standardization(image)"""
 

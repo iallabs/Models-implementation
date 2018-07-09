@@ -17,6 +17,7 @@ import datetime
 slim = tf.contrib.slim
 
 flags = tf.app.flags
+flags.DEFINE_float('gpu_p', 1.0, 'Float: allow gpu growth value to pass in config proto')
 flags.DEFINE_string('dataset_dir',"data",'String: Your dataset directory')
 flags.DEFINE_string('train_dir', "trainlogs", 'String: Your train directory')
 flags.DEFINE_boolean('log_device_placement', True,
@@ -29,7 +30,7 @@ dataset_dir = FLAGS.dataset_dir
 
 #Emplacement du checkpoint file
 checkpoint_file= FLAGS.ckpt
-
+gpu_p = FLAGS.gpu_p
 image_size = 224
 #Nombre de classes à prédire
 num_class = 15
@@ -75,15 +76,15 @@ num_epochs_before_decay = 1
 def run():
     #Create log_dir:
     if not os.path.exists(FLAGS.train_dir):
-        os.mkdir(FLAGS.train_dir)
+        os.mkdir(os.getcwd()+'/'+FLAGS.train_dir)
 
     #=========== Training ===========#
     #Adding the graph:
     with tf.Graph().as_default() as graph:
         tf.logging.set_verbosity(tf.logging.INFO) #Set the verbosity to INFO level
 
-        dataset = get_dataset("validation", dataset_dir, file_pattern=file_pattern, file_pattern_for_counting=file_pattern_for_counting, labels_to_name=labels_to_name)
-        images,_, oh_labels, labels = load_batch_dense(dataset, batch_size, image_size, image_size)
+        dataset = get_dataset("train", dataset_dir, file_pattern=file_pattern, file_pattern_for_counting=file_pattern_for_counting, labels_to_name=labels_to_name)
+        images,_, oh_labels, labels = load_batch_dense(dataset, batch_size, image_size, image_size, is_training=True)
 
         #Calcul of batches/epoch, number of steps after decay learning rate
         num_batches_per_epoch = int(dataset.num_samples / batch_size)
@@ -92,17 +93,17 @@ def run():
 
         #Create the model inference
         with slim.arg_scope(densenet.densenet_arg_scope(is_training=True)):
-            logits, end_points = densenet.densenet121(images, num_classes = dataset.num_classes, is_training = True)
+            logits, end_points = densenet.densenet121(images, num_classes = len(labels_to_name), is_training = True)
         
-        excluding = ['densenet121/logits']
-
+        excluding = ['densenet121/logits','densenet121/Predictions']
+        end_points['Predictions']=logits
+        end_points['Pred_sig']=tf.nn.sigmoid(logits)
         variable_to_restore = slim.get_variables_to_restore(exclude=excluding)
-        slim.assign_from_checkpoint(checkpoint_file, variable_to_restore)
         logit = tf.squeeze(logits)
 
         #Defining losses and regulization ops:
-        loss = tf.losses.softmax_cross_entropy(onehot_labels = oh_labels, logits = logit)
-        total_loss = tf.losses.get_total_loss()    #obtain the regularization losses as well
+        loss = tf.losses.sigmoid_cross_entropy(multi_class_labels = oh_labels, logits = logit)
+        total_loss = tf.reduce_mean(tf.losses.get_total_loss())    #obtain the regularization losses as well
         
         #Create the global step for monitoring the learning_rate and training:
         ckpt = tf.train.get_checkpoint_state(FLAGS.train_dir)
@@ -119,17 +120,9 @@ def run():
                                         decay_steps=decay_steps,
                                         decay_rate = learning_rate_decay_factor,
                                         staircase=True)
-
-        #Define Optimizer with decay learning rate:
-        optimizer = tf.train.AdamOptimizer(learning_rate = lr)
-
-        #Create the train_op.
-        train_op = slim.learning.create_train_op(total_loss, optimizer)
-
-
         #State the metrics that you want to predict. We get a predictions that is not one_hot_encoded.
-        predictions = tf.squeeze(tf.argmax(end_points['Predictions'], 3))
-        probabilities = end_points['Predictions']
+        predictions = tf.argmax(tf.squeeze(end_points['Predictions']),axis=1)
+        probabilities = end_points['Pred_sig']
         accuracy = tf.reduce_mean(tf.cast(tf.equal(labels, predictions), tf.float32))
 
         #Now finally create all the summaries you need to monitor and group them into one summary op.
@@ -138,6 +131,14 @@ def run():
         tf.summary.scalar('learning_rate', lr)
         tf.summary.histogram('probabilities', probabilities)
         my_summary_op = tf.summary.merge_all()
+        #Define Optimizer with decay learning rate:
+        optimizer = tf.train.AdamOptimizer(learning_rate = lr)
+
+        #Create the train_op.
+        train_op = optimizer.minimize(total_loss, global_step=global_step)
+
+
+        
 
         
 
@@ -171,17 +172,21 @@ def run():
         max_step = num_epochs*num_steps_per_epoch
 
         saver = tf.train.Saver(variable_to_restore)
-      
+
+        config = tf.ConfigProto()
+        config.log_device_placement = True
+        config.gpu_options.per_process_gpu_memory_fraction = gpu_p
         #Define your supervisor for running a managed session:
         supervisor = tf.train.MonitoredTrainingSession(checkpoint_dir=FLAGS.train_dir,
                                                         hooks=[tf.train.StopAtStepHook(last_step=max_step),
                                                                 tf.train.NanTensorHook(loss),
                                                                 _LoggerHook()],
-                                                        config=tf.ConfigProto(log_device_placement=FLAGS.log_device_placement),
-                                                        save_checkpoint_secs=1200,
-                                                        save_summaries_steps=100)
+                                                        config=config,
+                                                        save_checkpoint_secs=3600,
+                                                        save_summaries_steps=20)
 
         #Running session:
+        i=0
         with supervisor as sess:
             ckpt = tf.train.get_checkpoint_state(FLAGS.train_dir)
             if ckpt and ckpt.model_checkpoint_path:

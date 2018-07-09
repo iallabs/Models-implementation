@@ -11,7 +11,7 @@ import os
 import numpy as np
 
 checkpoint_dir = os.getcwd()
-checkpoint_file = checkpoint_dir + "/train_fruit/training/model.ckpt-8161"
+checkpoint_file = checkpoint_dir + "/train_fruit/training/model.ckpt-2316"
 
 image_size = 224
 main_dir = "D:/train/train/"
@@ -86,28 +86,29 @@ labels_to_name = {0:'Apple Braeburn',
 tf.logging.set_verbosity(tf.logging.INFO)
 
 
-sample_images = ["D:/ChestXray-14/images/00000001_000.png","D:/fruits/fruits-360/Training/"+labels_to_name[0]+"/0_100.jpg","D:clemetine_2.jpg"]
+sample_images = ["D:/ChestXray-14/images/00000001_000.png","D:/fruits/fruits-360/Training/"+labels_to_name[0]+"/0_100.jpg",
+                  "C:/Users/Lenovo/Documents/testset/kaki-2.jpg"]
 file_input = tf.placeholder(tf.string, ())
 image = tf.image.decode_jpeg(tf.read_file(file_input), channels=3)
 
-image_a = inception_preprocessing.preprocess_image(image, 224,224)
+image_a = inception_preprocessing.preprocess_image(image, 224,224, is_training=False)
 
-"""images = dp.preprocess_image(image, 224, 224, is_training=False)
-images_bis = tf.expand_dims(images,0)
+"""images = dp.preprocess_image(image, 224, 224, is_training=False)"""
+images_bis = tf.expand_dims(image_a,0)
+with slim.arg_scope(mobilenet_v1.mobilenet_v1_arg_scope(is_training=False)):
+  logits, endpoints = mobilenet_v1.mobilenet_v1_050(images_bis, num_classes=len(labels_to_name), is_training=False)
 
-logits, endpoints = mobilenet_v1.mobilenet_v1_050(images_bis, num_classes=len(labels_to_name), is_training=False)
-
-endpoints['Predictions'] = logits"""
+endpoints['Predictions'] = tf.nn.sigmoid(logits)
 
 
 with tf.Session() as sess:
-  """vars = slim.get_variables_to_restore()
+  vars = slim.get_variables_to_restore()
   saver = tf.train.Saver(vars)
-  saver.restore(sess,  checkpoint_file)"""
-  img = image_a.eval(feed_dict={file_input: sample_images[0]})
-  print(img)
+  saver.restore(sess,  checkpoint_file)
   
-  """x = endpoints['Predictions'].eval(feed_dict={file_input: sample_images[1]})"""
+  print(image_a.eval(feed_dict={file_input: sample_images[2]}))
 
-"""print("Prediction class:", labels_to_name[x.argmax()])
-print("Prediction value", x.max())"""
+  x = endpoints['Predictions'].eval(feed_dict={file_input: sample_images[2]})
+
+  print("Prediction class:", labels_to_name[x.argmax()])
+  print("Prediction value", x.max())

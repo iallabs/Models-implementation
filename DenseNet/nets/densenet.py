@@ -3,9 +3,10 @@ import tensorflow as tf
 slim = tf.contrib.slim
 
 @slim.add_arg_scope
-def _global_avg_pool2d(inputs, scope=None,outputs=None):
+def _global_avg_pool2d(inputs, scope=None,outputs=None, data_format="NHWC"):
+    axis = [1,2] if data_format=="NHWC" else [2,3]
     with tf.variable_scope(scope, 'g_avg', [inputs]) as v_scope:
-        net = tf.reduce_mean(inputs, axis=[1,2],keep_dims=True)
+        net = tf.reduce_mean(inputs, axis=axis,keep_dims=True)
         net = slim.utils.collect_named_outputs(outputs, v_scope.name, net)
     return net
 
@@ -21,12 +22,15 @@ def _conv(inputs, number_filters, kernel_size, strides=1, dropout=None, scope=No
     return net
 
 @slim.add_arg_scope
-def _block(inputs, number_filters, scope=None, outputs=None):
+def _block(inputs, number_filters, scope=None, outputs=None, data_format='NHWC'):
     with tf.variable_scope(scope, 'conv_blockn', [inputs]) as v_scope:
         net = inputs
         net = _conv(net, number_filters*4, 1, scope="x1")
         net = _conv(net, number_filters,3, scope="x2")
-        net = tf.concat([inputs, net], 3)
+        if data_format="NHWC":
+            net = tf.concat([inputs, net], 3)
+        else:
+            net = tf.concat([inputs, net], 1)
         net = slim.utils.collect_named_outputs(outputs, v_scope.name, net)
     return net
 
@@ -66,7 +70,8 @@ def densenet(inputs,
              dropout_rate=0.999,
              is_training=True,
              reuse=None,
-             scope=None):
+             scope=None,
+             data_format="NHWC"):
     #Assert conditions 
     assert reduction is not None
     assert growth_rate is not None
@@ -75,7 +80,8 @@ def densenet(inputs,
 
     compression = 1.0 - reduction
     number_dense_blocks = len(number_layers)
-
+    if data_format == 'NCHW':
+        inputs = tf.transpose(inputs, [0, 3, 1, 2])
     with tf.variable_scope(scope, 'densenetnnn', [inputs, num_classes],reuse=reuse) as v_scope:
         end_points_collection = v_scope.name + '_end_points'
 
@@ -125,7 +131,7 @@ def densenet(inputs,
             return net, end_points
 
 
-def densenet121(inputs, num_classes=1000, is_training=True, reuse=None):
+def densenet121(inputs, num_classes=1000, is_training=True, reuse=None, data_format='NHWC'):
     return densenet(inputs,
                     num_classes=num_classes, 
                     reduction=0.5,
@@ -136,7 +142,7 @@ def densenet121(inputs, num_classes=1000, is_training=True, reuse=None):
                     reuse=reuse,
                     scope='densenet121')
 
-def densenet161(inputs, num_classes=1000, is_training=True, reuse=None):
+def densenet161(inputs, num_classes=1000, is_training=True, reuse=None, data_format='NHWC'):
     return densenet(inputs,
                     num_classes=num_classes, 
                     reduction=0.5,
@@ -149,15 +155,15 @@ def densenet161(inputs, num_classes=1000, is_training=True, reuse=None):
 
 def densenet_arg_scope(weight_decay=1e-4,
                        batch_norm_decay=0.99,
-                       batch_norm_epsilon=1.1e-5, is_training=True):
+                       batch_norm_epsilon=1.1e-5, is_training=True,data_format='NHWC'):
 
     with slim.arg_scope([slim.conv2d, slim.batch_norm, slim.avg_pool2d, slim.max_pool2d,
-                       _block, _global_avg_pool2d]):
+                       _block, _global_avg_pool2d], data_format=data_format):
 
         with slim.arg_scope([slim.conv2d],
                          weights_regularizer=slim.l2_regularizer(weight_decay),
                          activation_fn=None,
-                         biases_initializer=None):
+                         biases_initializer=tf.initializers.zeros):
             with slim.arg_scope([slim.batch_norm],
                           scale=True,
                           decay=batch_norm_decay,

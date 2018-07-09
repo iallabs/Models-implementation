@@ -126,13 +126,13 @@ labels_to_name = {
 
 #=======Training Informations======#
 #Nombre d'époques pour l'entraînement
-num_epochs = 35
+num_epochs = 10
 
 #State your batch size
 batch_size = 16
 
 #Learning rate information and configuration (Up to you to experiment)
-initial_learning_rate = 0.001
+initial_learning_rate = 0.0009
 learning_rate_decay_factor = 0.95
 num_epochs_before_decay = 1
 
@@ -155,28 +155,34 @@ def run():
         decay_steps = int(num_epochs_before_decay * num_steps_per_epoch)
 
         #Create the model inference
-        with slim.arg_scope(mobilenet_v1.mobilenet_v1_arg_scope(is_training=True)):
+        with slim.arg_scope(mobilenet_v1.mobilenet_v1_arg_scope(is_training=True, regularize_depthwise=True, weight_decay=0.0004)):
         #TODO: Check mobilenet_v1 module, var "excluding
-            logits, end_points = mobilenet_v1.mobilenet_v1_050(images, num_classes = len(labels_to_name), is_training = True)
-
-        excluding = ['MobilenetV1/Logits', 'MobilenetV1/AuxLogits', 'MobilenetV1/Predictions']
+            net, end_points = mobilenet_v1.mobilenet_v1_050(images, num_classes = None, is_training = True)
+            
+        excluding = ['MobilenetV1/Logits/Dropout_1b','MobilenetV1/Logits/Conv2d_1c_1x1','MobilenetV1/Logits/Predictions']   
         variable_to_restore = slim.get_variables_to_restore(exclude=excluding)
 
+        kernel_1= tf.get_variable('fcn-1',[1,1,512,256], initializer=tf.initializers.random_normal(stddev=5e-3,dtype=tf.float32),
+                                    regularizer=tf.contrib.layers.l2_regularizer(0.0001,"r_1"),dtype=tf.float32)
+        biase_1 = tf.get_variable('biase-1',[1,1,1,256], initializer=tf.zeros_initializer(dtype=tf.float32),
+                                    regularizer=tf.contrib.layers.l2_regularizer(0.0001,"rb_1"),dtype=tf.float32)
+        net = tf.add(tf.nn.conv2d(net, kernel_1, [1,1,1,1], padding="VALID", name='Conv2d_1c_1x1'), biase_1)
+        end_points['Conv2d_1c_1x1']= net
+        kernel_2 = tf.get_variable('fcn-2',[1,1,256,len(labels_to_name)], initializer=tf.initializers.random_normal(stddev=5e-3,dtype=tf.float32),
+                                    regularizer=tf.contrib.layers.l2_regularizer(0.0001,"r_2"),dtype=tf.float32)
+        biase_2 = tf.get_variable('biase-2',[1,1,1,len(labels_to_name)], initializer=tf.zeros_initializer(dtype=tf.float32),
+                                    regularizer=tf.contrib.layers.l2_regularizer(0.0001,"rb_2"),dtype=tf.float32)
+        logits = tf.add(tf.nn.conv2d(net, kernel_2, [1,1,1,1], padding="VALID", name='Conv2d_2c_1x1'), biase_2)
+        logits = tf.squeeze(logits, [1, 2], name='SpatialSqueeze')
 
-        #We reconstruct a FCN block on top of our final conv layer. 
-        """net = slim.dropout(net, keep_prob=0.5, scope='Dropout_1b')
-        net = slim.conv2d(net, 512, [1,1], activation_fn=None, normalizer_fn=None, scope='Conv2d_1c_1x1')
-        net = slim.dropout(net, keep_prob=0.5, scope='Dropout_1b')
-        net = slim.conv2d(net, 256, [1,1], activation_fn=None, normalizer_fn=None, scope='Conv2d_1c_1x1_1')
-        logits = slim.conv2d(net, dataset.num_classes, [1, 1], activation_fn=None,
-                             normalizer_fn=None, scope='Conv2d_1c_1x1_2')
-        logits = tf.nn.relu(logits, name='final_relu')
-        logits = tf.squeeze(logits, [1, 2], name='SpatialSqueeze')"""
-        end_points['Predictions'] = logits
+        #We reconstruct a FCN block on top of our final conv layer.
+        
+        end_points['Predictions_1'] = logits
 
         #Defining losses and regulization ops:
-        loss = tf.reduce_mean(tf.losses.sigmoid_cross_entropy(multi_class_labels = oh_labels, logits = logits))
-        total_loss = tf.losses.get_total_loss()    #obtain the regularization losses as well
+        loss = tf.losses.sigmoid_cross_entropy(multi_class_labels = oh_labels, logits = logits)
+       
+        total_loss = tf.reduce_mean(tf.losses.get_total_loss())    #obtain the regularization losses as well
         
         #Create the global step for monitoring the learning_rate and training:
         ckpt = tf.train.get_checkpoint_state(FLAGS.train_dir)
@@ -197,16 +203,9 @@ def run():
         #Define Optimizer with decay learning rate:
         optimizer = tf.train.AdamOptimizer(learning_rate = lr)      
 
-        
-
-        #Create the train_op#.
-        train_op = optimizer.minimize(total_loss, global_step=global_step)
-        """train_op = slim.learning.create_train_op(total_loss, optimizer)"""
-
         #State the metrics that you want to predict. We get a predictions that is not one_hot_encoded.
         #FIXME: Replace classifier function (sigmoid / softmax)
-        predictions = tf.argmax(tf.nn.sigmoid(end_points['Predictions']), 1)
-        probabilities = end_points['Predictions']
+        predictions = tf.argmax(tf.nn.sigmoid(end_points['Predictions_1']), 1)
         names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({
             'Accuracy': tf.metrics.accuracy(labels, predictions),
             })
@@ -219,14 +218,25 @@ def run():
         #Default accuracy
         accuracy = tf.reduce_mean(tf.cast(tf.equal(labels, predictions), tf.float32))
 
-        #Now finally create all the summaries you need to monitor and group them into one summary op.#
+        # summaries to monitor and group them into one summary op.#
         tf.summary.scalar('accuracy_perso', accuracy)
         tf.summary.scalar('losses/Total_Loss', total_loss)
         tf.summary.scalar('learning_rate', lr)
-        tf.summary.histogram('probabilities', probabilities)
+        tf.summary.scalar('global_step', global_step)
+        tf.summary.histogram('images',images)
+        tf.summary.histogram('Conv2d_1c_1x1',end_points['Conv2d_1c_1x1'])
+        tf.summary.histogram('proba_perso',end_points['Predictions_1'])        
+        tf.summary.histogram('avg_pool', end_points["AvgPool_1a"])    
+  
+        #Create the train_op#.
+        train_op = optimizer.minimize(total_loss, global_step=global_step)
+        """train_op = slim.learning.create_train_op(total_loss, optimizer)"""
+
+        
         my_summary_op = tf.summary.merge_all()
         #Define max steps:
         max_step = num_epochs*num_steps_per_epoch
+
         #Create a saver to load pre-trained model
         saver = tf.train.Saver(variable_to_restore)
 
@@ -268,7 +278,7 @@ def run():
                                                                 tf.train.NanTensorHook(loss),
                                                                 _LoggerHook()],
                                                         config=config,
-                                                        save_checkpoint_secs=630,
+                                                        save_checkpoint_secs=1800,
                                                         save_summaries_steps=20)
         i = 0
         #Running session:
@@ -279,6 +289,8 @@ def run():
                 saver.restore(sess, ckpt.model_checkpoint_path)
             else:
                 saver.restore(sess, checkpoint_file)
+            
+
             while not sess.should_stop():
                 if (i+1) % num_steps_per_epoch == 0:
                     ckpt_eval = tf.train.get_checkpoint_state(FLAGS.train_dir)
