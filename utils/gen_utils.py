@@ -64,7 +64,7 @@ def get_dataset(phase_name, dataset_dir, file_pattern, file_pattern_for_counting
     
     return dataset
 
-def load_batch(dataset, batch_size, height, width,is_training=True):
+def load_batch(dataset, batch_size, height, width,is_training=True, shuffle=True):
 
     """ Fucntion for loading a train batch 
     OUTPUTS:
@@ -77,7 +77,7 @@ def load_batch(dataset, batch_size, height, width,is_training=True):
         dataset,
         common_queue_capacity = 24 + 3*batch_size,
         common_queue_min = 24,
-        shuffle = True
+        shuffle = shuffle
     )
 
     raw_image, true_height, true_width, label = provider.get(['image','height','width','label'])
@@ -94,17 +94,25 @@ def load_batch(dataset, batch_size, height, width,is_training=True):
     raw_image = tf.squeeze(raw_image)
 
     #Batch up the image by enqueing the tensors internally in a FIFO queue and dequeueing many elements with tf.train.batch.
-    images, raw_images, one_hot_labels, labels = tf.train.shuffle_batch(
-        [image, raw_image, one_hot_labels, label],
-        batch_size = batch_size,
-        num_threads = 4,
-        capacity = 4 * batch_size,
-        min_after_dequeue = batch_size,
-        allow_smaller_final_batch = True)
+    if shuffle:
+        images, raw_images, one_hot_labels, labels = tf.train.shuffle_batch(
+            [image, raw_image, one_hot_labels, label],
+            batch_size = batch_size,
+            num_threads = 4,
+            capacity = 4 * batch_size,
+            min_after_dequeue = batch_size,
+            allow_smaller_final_batch = True)
+    else:
+        images, raw_images, one_hot_labels, labels = tf.train.batch(
+            [image, raw_image, one_hot_labels, label],
+            batch_size = batch_size,
+            num_threads = 4,
+            capacity = 4 * batch_size,
+            allow_smaller_final_batch = True)
 
     return images, raw_images, one_hot_labels, labels
 
-def load_batch_dense(dataset, batch_size, height, width,is_training=True):
+def load_batch_dense(dataset, batch_size, height, width,is_training=True, shuffle=True):
 
     """ Function for loading a train batch 
     OUTPUTS:
@@ -117,6 +125,7 @@ def load_batch_dense(dataset, batch_size, height, width,is_training=True):
         dataset,
         common_queue_capacity = 24 + 3*batch_size,
         common_queue_min = 24,
+        shuffle=shuffle
     )
 
     raw_image, true_height, true_width, label = provider.get(['image','height','width','label'])
@@ -134,12 +143,20 @@ def load_batch_dense(dataset, batch_size, height, width,is_training=True):
     raw_image = tf.squeeze(raw_image)
 
     #Batch up the image by enqueing the tensors internally in a FIFO queue and dequeueing many elements with tf.train.batch.
-    images, raw_images, one_hot_labels, labels = tf.train.shuffle_batch(
-        [image, raw_image, one_hot_labels, label],
-        batch_size = batch_size,
-        num_threads = 4,
-        capacity = 4 * batch_size,
-        min_after_dequeue = batch_size,
-        allow_smaller_final_batch = True)
+    if shuffle:
+        images, raw_images, one_hot_labels, labels = tf.train.shuffle_batch(
+            [image, raw_image, one_hot_labels, label],
+            batch_size = batch_size,
+            num_threads = 4,
+            capacity = 4 * batch_size,
+            min_after_dequeue = batch_size,
+            allow_smaller_final_batch = True)
+    else:
+        images, raw_images, one_hot_labels, labels = tf.train.batch(
+            [image, raw_image, one_hot_labels, label],
+            batch_size = batch_size,
+            num_threads = 4,
+            capacity = 4 * batch_size,
+            allow_smaller_final_batch = True)
 
     return images, raw_images, one_hot_labels, labels

@@ -49,9 +49,13 @@ def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counti
         biase_1 = tf.get_variable('biase-1',[1,1,1,256])
         net = tf.add(tf.nn.conv2d(net, kernel_1, [1,1,1,1], padding="VALID", name='Conv2d_1c_1x1'), biase_1)
         end_points['Conv2d_1c_1x1']= net
-        kernel_2 = tf.get_variable('fcn-2',[1,1,256,len(labels_to_name)])
-        biase_2 = tf.get_variable('biase-2',[1,1,1,len(labels_to_name)])
-        logits = tf.add(tf.nn.conv2d(net, kernel_2, [1,1,1,1], padding="VALID", name='Conv2d_2c_1x1'), biase_2)
+        kernel_2 = tf.get_variable('fcn-2',[1,1,256,128])
+        biase_2 = tf.get_variable('biase-2',[1,1,1,128])
+        net = tf.add(tf.nn.conv2d(net, kernel_2, [1,1,1,1], padding="VALID", name='Conv2d_2c_1x1'), biase_2)
+        end_points['Conv2d_2c_1x1']= net
+        kernel_3 = tf.get_variable('fcn-3',[1,1,128,len(labels_to_name)])
+        biase_3 = tf.get_variable('biase-3',[1,1,1,len(labels_to_name)])
+        logits = tf.add(tf.nn.conv2d(net, kernel_3, [1,1,1,1], padding="VALID", name='Conv2d_2c_1x1'), biase_3)
         logits = tf.squeeze(logits, [1, 2], name='SpatialSqueeze')
         variables_to_restore = slim.get_variables_to_restore()
         end_points['Predictions_1'] = logits

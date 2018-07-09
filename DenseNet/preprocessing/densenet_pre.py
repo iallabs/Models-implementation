@@ -10,7 +10,7 @@ _R_MEAN = 123.68
 _G_MEAN = 116.779
 _B_MEAN = 103.939
 
-_SCALE_FACTOR = 0.017
+_SCALE_FACTOR = 0.9 
 #ImageNet standard deviation (écart-type)
 _R_STD = 58.395
 _G_STD = 57.12
