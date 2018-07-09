@@ -43,7 +43,7 @@ def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counti
 
         #Create the model inference
         with slim.arg_scope(mobilenet_v1.mobilenet_v1_arg_scope(is_training=False)):
-            logits, end_points = mobilenet_v1.mobilenet_v1_050(images, num_classes = None, is_training = False)
+            net, end_points = mobilenet_v1.mobilenet_v1_050(images, num_classes = None, is_training = False)
         
         kernel_1= tf.get_variable('fcn-1',[1,1,512,256])
         biase_1 = tf.get_variable('biase-1',[1,1,1,256])
