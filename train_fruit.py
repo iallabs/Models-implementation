@@ -34,8 +34,8 @@ checkpoint_file= FLAGS.ckpt
 
 image_size = 224
 #Nombre de classes à prédire
-file_pattern = "chest_%s_*.tfrecord"
-file_pattern_for_counting = "chest"
+file_pattern = "MURA_%s_*.tfrecord"
+file_pattern_for_counting = "MURA"
 """file_pattern = "fruit_%s_*.tfrecord"
 file_pattern_for_counting = "fruit"""
 #Création d'un dictionnaire pour reférer à chaque label
@@ -106,7 +106,7 @@ file_pattern_for_counting = "fruit"""
                 64: 'Tangelo'
                 }"""
 
-labels_to_name = {
+"""labels_to_name = {
                 0:'No Finding', 
                 1:'Atelectasis',
                 2:'Cardiomegaly', 
@@ -122,8 +122,11 @@ labels_to_name = {
                 12: 'Fibrosis',
                 13: 'Pleural_Thickening',
                 14: 'Hernia'
-                }
-
+                }"""
+labels_to_name = {
+    'negative':0,
+    'positive':1
+}
 #=======Training Informations======#
 #Nombre d'époques pour l'entraînement
 num_epochs = 10
@@ -147,7 +150,7 @@ def run():
         tf.logging.set_verbosity(tf.logging.INFO) #Set the verbosity to INFO level
 
         dataset = get_dataset("train", dataset_dir, file_pattern=file_pattern, file_pattern_for_counting=file_pattern_for_counting, labels_to_name=labels_to_name)
-        images,_, oh_labels, labels = load_batch(dataset, batch_size, image_size, image_size)
+        images,_, oh_labels, labels = load_batch_dense(dataset, batch_size, image_size, image_size, shuffle=False)
 
         #Calcul of batches/epoch, number of steps after decay learning rate
         num_batches_per_epoch = int(dataset.num_samples / batch_size)
@@ -162,17 +165,23 @@ def run():
         excluding = ['MobilenetV1/Logits/Dropout_1b','MobilenetV1/Logits/Conv2d_1c_1x1','MobilenetV1/Logits/Predictions']   
         variable_to_restore = slim.get_variables_to_restore(exclude=excluding)
 
-        kernel_1= tf.get_variable('fcn-1',[1,1,512,256], initializer=tf.initializers.random_normal(stddev=5e-3,dtype=tf.float32),
+        kernel_1= tf.get_variable('fcn-1',[1,1,512,256], initializer=tf.initializers.random_normal(stddev=1e-1,dtype=tf.float32),
                                     regularizer=tf.contrib.layers.l2_regularizer(0.0001,"r_1"),dtype=tf.float32)
-        biase_1 = tf.get_variable('biase-1',[1,1,1,256], initializer=tf.zeros_initializer(dtype=tf.float32),
+        biase_1 = tf.get_variable('biase-1',[1,1,1,256], initializer=tf.ones_initializer(dtype=tf.float32),
                                     regularizer=tf.contrib.layers.l2_regularizer(0.0001,"rb_1"),dtype=tf.float32)
         net = tf.add(tf.nn.conv2d(net, kernel_1, [1,1,1,1], padding="VALID", name='Conv2d_1c_1x1'), biase_1)
         end_points['Conv2d_1c_1x1']= net
-        kernel_2 = tf.get_variable('fcn-2',[1,1,256,len(labels_to_name)], initializer=tf.initializers.random_normal(stddev=5e-3,dtype=tf.float32),
+        kernel_2 = tf.get_variable('fcn-2',[1,1,256,128], initializer=tf.initializers.random_normal(stddev=1e-1,dtype=tf.float32),
                                     regularizer=tf.contrib.layers.l2_regularizer(0.0001,"r_2"),dtype=tf.float32)
-        biase_2 = tf.get_variable('biase-2',[1,1,1,len(labels_to_name)], initializer=tf.zeros_initializer(dtype=tf.float32),
+        biase_2 = tf.get_variable('biase-2',[1,1,1,128], initializer=tf.ones_initializer(dtype=tf.float32),
                                     regularizer=tf.contrib.layers.l2_regularizer(0.0001,"rb_2"),dtype=tf.float32)
-        logits = tf.add(tf.nn.conv2d(net, kernel_2, [1,1,1,1], padding="VALID", name='Conv2d_2c_1x1'), biase_2)
+        net = tf.add(tf.nn.conv2d(net, kernel_2, [1,1,1,1], padding="VALID", name='Conv2d_2c_1x1'), biase_2)
+        end_points['Conv2d_2c_1x1']= net
+        kernel_3 = tf.get_variable('fcn-3',[1,1,128,len(labels_to_name)], initializer=tf.initializers.random_normal(stddev=1e-1, dtype=tf.float32),
+                                    regularizer=tf.contrib.layers.l2_regularizer(0.0001,"r_3"),dtype=tf.float32)
+        biase_3 = tf.get_variable('biase-3',[1,1,1,len(labels_to_name)], initializer=tf.ones_initializer(dtype=tf.float32),
+                                    regularizer=tf.contrib.layers.l2_regularizer(0.0001,"rb_3"),dtype=tf.float32)
+        logits = tf.add(tf.nn.conv2d(net, kernel_3, [1,1,1,1], padding="VALID", name='Conv2d_3c_1x1'), biase_3)
         logits = tf.squeeze(logits, [1, 2], name='SpatialSqueeze')
 
         #We reconstruct a FCN block on top of our final conv layer.
@@ -278,7 +287,7 @@ def run():
                                                                 tf.train.NanTensorHook(loss),
                                                                 _LoggerHook()],
                                                         config=config,
-                                                        save_checkpoint_secs=1800,
+                                                        save_checkpoint_secs=300,
                                                         save_summaries_steps=20)
         i = 0
         #Running session:
