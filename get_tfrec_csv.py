@@ -14,7 +14,7 @@ flags = tf.app.flags
 flags.DEFINE_string('dataset_dir', None, 'String: Your dataset directory')
 
 # The number of images in the validation set. You would have to know the total number of examples in advance. This is essentially your evaluation dataset.
-flags.DEFINE_float('validation_size', 0.1, 'Float: The proportion of examples in the dataset to be used for validation')
+flags.DEFINE_float('validation_size', 0.0, 'Float: The proportion of examples in the dataset to be used for validation')
 
 # The number of shards to split the dataset into
 flags.DEFINE_integer('num_shards', 2, 'Int: Number of shards to split the TFRecord files')
@@ -26,21 +26,8 @@ flags.DEFINE_string('tfrecord_filename', None, 'String: The output filename to n
 FLAGS = flags.FLAGS
 
 #TODO change this dict into names to ids
-class_names_to_ids = {  'No Finding': 0,
-                        'Atelectasis':1,
-                        'Cardiomegaly':2,
-                        'Effusion':3,
-                        'Infiltration':4, 
-                        'Mass':5,
-                        'Nodule':6,
-                        'Pneumonia':7,
-                        'Pneumothorax':8,
-                        'Consolidation':9,
-                        'Edema':10,
-                        'Emphysema':11,
-                        'Fibrosis':12,
-                        'Pleural_Thickening':13,
-                        'Hernia':14}
+class_names_to_ids = {  'negative': 0,
+                        'positive':1}
 
 
 def main():
@@ -88,8 +75,8 @@ def main():
     _convert_dataset('train', training_filenames, class_names_to_ids,
                      dataset_dir = FLAGS.dataset_dir, tfrecord_filename = FLAGS.tfrecord_filename, _NUM_SHARDS = FLAGS.num_shards)
 
-    _convert_dataset('validation', validation_filenames, class_names_to_ids,
-                     dataset_dir = FLAGS.dataset_dir, tfrecord_filename = FLAGS.tfrecord_filename, _NUM_SHARDS = FLAGS.num_shards)
+    """_convert_dataset('validation', validation_filenames, class_names_to_ids,
+                     dataset_dir = FLAGS.dataset_dir, tfrecord_filename = FLAGS.tfrecord_filename, _NUM_SHARDS = FLAGS.num_shards)"""
 
     print('\nFinished converting the %s dataset!' % (FLAGS.tfrecord_filename))
 

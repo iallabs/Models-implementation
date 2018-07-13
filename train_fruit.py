@@ -3,7 +3,7 @@ import tensorflow as tf
 
 from tensorflow.python.platform import tf_logging as logging
 
-import research.slim.nets.mobilenet_v1 as mobilenet_v1
+import research.slim.nets.mobilenet.mobilenet_v2 as mobilenet_v2
 
 from utils.gen_utils import load_batch, get_dataset, load_batch_dense
 from eval_fruit import evaluate
@@ -27,6 +27,9 @@ FLAGS = flags.FLAGS
 #=======Dataset Informations=======#
 dataset_dir = FLAGS.dataset_dir
 gpu_p = FLAGS.gpu_p
+
+
+
 log_dir="log"
 
 #Emplacement du checkpoint file
@@ -131,11 +134,12 @@ labels_to_name = {
 #Nombre d'époques pour l'entraînement
 num_epochs = 10
 
+
 #State your batch size
 batch_size = 16
 
 #Learning rate information and configuration (Up to you to experiment)
-initial_learning_rate = 0.0009
+initial_learning_rate = 0.0001
 learning_rate_decay_factor = 0.95
 num_epochs_before_decay = 1
 
@@ -146,173 +150,143 @@ def run():
 
     #===================================================================== Training ===========================================================================#
     #Adding the graph:
+    tf.logging.set_verbosity(tf.logging.INFO) #Set the verbosity to INFO level
     with tf.Graph().as_default() as graph:
-        tf.logging.set_verbosity(tf.logging.INFO) #Set the verbosity to INFO level
-
-        dataset = get_dataset("train", dataset_dir, file_pattern=file_pattern, file_pattern_for_counting=file_pattern_for_counting, labels_to_name=labels_to_name)
-        images,_, oh_labels, labels = load_batch_dense(dataset, batch_size, image_size, image_size, shuffle=False)
+        with tf.name_scope("dataset"):
+            dataset = get_dataset("train", dataset_dir, file_pattern=file_pattern, file_pattern_for_counting=file_pattern_for_counting, labels_to_name=labels_to_name)
+        with tf.name_scope("load_data"):
+            images,_, oh_labels, labels = load_batch_dense(dataset, batch_size, image_size, image_size, shuffle=True, is_training=True)
 
         #Calcul of batches/epoch, number of steps after decay learning rate
         num_batches_per_epoch = int(dataset.num_samples / batch_size)
         num_steps_per_epoch = num_batches_per_epoch #Because one step is one batch processed
         decay_steps = int(num_epochs_before_decay * num_steps_per_epoch)
-
-        #Create the model inference
-        with slim.arg_scope(mobilenet_v1.mobilenet_v1_arg_scope(is_training=True, regularize_depthwise=True, weight_decay=0.0004)):
-        #TODO: Check mobilenet_v1 module, var "excluding
-            net, end_points = mobilenet_v1.mobilenet_v1_050(images, num_classes = None, is_training = True)
+    
+    #Create the model inference
+        with slim.arg_scope(mobilenet_v2.training_scope(is_training=True, weight_decay=0.0004, stddev=0.01, dropout_keep_prob=0.999, bn_decay=0.997)):
+    #TODO: Check mobilenet_v1 module, var "excluding
+            logits, end_points = mobilenet_v2.mobilenet(images, num_classes = len(labels_to_name), is_training = True)
             
-        excluding = ['MobilenetV1/Logits/Dropout_1b','MobilenetV1/Logits/Conv2d_1c_1x1','MobilenetV1/Logits/Predictions']   
-        variable_to_restore = slim.get_variables_to_restore(exclude=excluding)
-
-        kernel_1= tf.get_variable('fcn-1',[1,1,512,256], initializer=tf.initializers.random_normal(stddev=1e-1,dtype=tf.float32),
-                                    regularizer=tf.contrib.layers.l2_regularizer(0.0001,"r_1"),dtype=tf.float32)
-        biase_1 = tf.get_variable('biase-1',[1,1,1,256], initializer=tf.ones_initializer(dtype=tf.float32),
-                                    regularizer=tf.contrib.layers.l2_regularizer(0.0001,"rb_1"),dtype=tf.float32)
-        net = tf.add(tf.nn.conv2d(net, kernel_1, [1,1,1,1], padding="VALID", name='Conv2d_1c_1x1'), biase_1)
-        end_points['Conv2d_1c_1x1']= net
-        kernel_2 = tf.get_variable('fcn-2',[1,1,256,128], initializer=tf.initializers.random_normal(stddev=1e-1,dtype=tf.float32),
-                                    regularizer=tf.contrib.layers.l2_regularizer(0.0001,"r_2"),dtype=tf.float32)
-        biase_2 = tf.get_variable('biase-2',[1,1,1,128], initializer=tf.ones_initializer(dtype=tf.float32),
-                                    regularizer=tf.contrib.layers.l2_regularizer(0.0001,"rb_2"),dtype=tf.float32)
-        net = tf.add(tf.nn.conv2d(net, kernel_2, [1,1,1,1], padding="VALID", name='Conv2d_2c_1x1'), biase_2)
-        end_points['Conv2d_2c_1x1']= net
-        kernel_3 = tf.get_variable('fcn-3',[1,1,128,len(labels_to_name)], initializer=tf.initializers.random_normal(stddev=1e-1, dtype=tf.float32),
-                                    regularizer=tf.contrib.layers.l2_regularizer(0.0001,"r_3"),dtype=tf.float32)
-        biase_3 = tf.get_variable('biase-3',[1,1,1,len(labels_to_name)], initializer=tf.ones_initializer(dtype=tf.float32),
-                                    regularizer=tf.contrib.layers.l2_regularizer(0.0001,"rb_3"),dtype=tf.float32)
-        logits = tf.add(tf.nn.conv2d(net, kernel_3, [1,1,1,1], padding="VALID", name='Conv2d_3c_1x1'), biase_3)
-        logits = tf.squeeze(logits, [1, 2], name='SpatialSqueeze')
+        excluding = ['MobilenetV2/Logits/Conv2d_1c_1x1']   
+        variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
+        ckpt_state = tf.train.get_checkpoint_state(FLAGS.train_dir)
+        if ckpt_state and ckpt_state.model_checkpoint_path:
+            ckpt = ckpt_state.model_checkpoint_path
+        else:
+            ckpt = checkpoint_file
 
         #We reconstruct a FCN block on top of our final conv layer.
         
         end_points['Predictions_1'] = logits
 
         #Defining losses and regulization ops:
-        loss = tf.losses.sigmoid_cross_entropy(multi_class_labels = oh_labels, logits = logits)
+        with tf.name_scope("loss_op"):
+            loss = tf.losses.sigmoid_cross_entropy(multi_class_labels = oh_labels, logits = logits)
        
-        total_loss = tf.reduce_mean(tf.losses.get_total_loss())    #obtain the regularization losses as well
+            total_loss = tf.reduce_mean(tf.losses.get_total_loss())  #obtain the regularization losses as well
         
         #Create the global step for monitoring the learning_rate and training:
-        ckpt = tf.train.get_checkpoint_state(FLAGS.train_dir)
-        global_step_init = -1
-        if ckpt and ckpt.model_checkpoint_path:
-            global_step_init = int(ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1])
-            global_step = tf.Variable(global_step_init, name='global_step', dtype=tf.int64, trainable=False)
+        global_step = tf.train.get_or_create_global_step()
 
-        else:
-            global_step = tf.train.get_or_create_global_step()
+        with tf.name_scope("learning_rate"):    
+            lr = tf.train.exponential_decay(learning_rate=initial_learning_rate,
+                                    global_step=global_step,
+                                    decay_steps=decay_steps,
+                                    decay_rate = learning_rate_decay_factor,
+                                    staircase=True)
 
-        lr = tf.train.exponential_decay(learning_rate=initial_learning_rate,
-                                        global_step=global_step,
-                                        decay_steps=decay_steps,
-                                        decay_rate = learning_rate_decay_factor,
-                                        staircase=True)
-
-        #Define Optimizer with decay learning rate:
-        optimizer = tf.train.AdamOptimizer(learning_rate = lr)      
-
+    #Define Optimizer with decay learning rate:
+        with tf.name_scope("optimizer"):
+            optimizer = tf.train.AdamOptimizer(learning_rate = lr)      
+            train_op = optimizer.minimize(total_loss, global_step=global_step)
         #State the metrics that you want to predict. We get a predictions that is not one_hot_encoded.
         #FIXME: Replace classifier function (sigmoid / softmax)
-        predictions = tf.argmax(tf.nn.sigmoid(end_points['Predictions_1']), 1)
-        names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({
+        with tf.name_scope("metrics"):
+            predictions = tf.argmax(tf.nn.sigmoid(end_points['Predictions_1']), 1)
+            names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({
             'Accuracy': tf.metrics.accuracy(labels, predictions),
             })
+            for name, value in names_to_values.items():
+                summary_name = 'train/%s' % name
+                op = tf.summary.scalar(summary_name, value, collections=[])
+                tf.add_to_collection(tf.GraphKeys.SUMMARIES, op)
+            #Default accuracy
+            accuracy = tf.reduce_mean(tf.cast(tf.equal(labels, predictions), tf.float32))
+            # summaries to monitor and group them into one summary op.#
+            tf.summary.scalar('accuracy_perso', accuracy)
+            tf.summary.scalar('losses/Total_Loss', total_loss)
+            tf.summary.scalar('learning_rate', lr)
+            tf.summary.scalar('global_step', global_step)
+            tf.summary.histogram('images',images)
+            tf.summary.histogram('proba_perso',end_points['Predictions_1'])        
 
-        for name, value in names_to_values.items():
-            summary_name = 'train/%s' % name
-            op = tf.summary.scalar(summary_name, value, collections=[])
-            tf.add_to_collection(tf.GraphKeys.SUMMARIES, op)
-
-        #Default accuracy
-        accuracy = tf.reduce_mean(tf.cast(tf.equal(labels, predictions), tf.float32))
-
-        # summaries to monitor and group them into one summary op.#
-        tf.summary.scalar('accuracy_perso', accuracy)
-        tf.summary.scalar('losses/Total_Loss', total_loss)
-        tf.summary.scalar('learning_rate', lr)
-        tf.summary.scalar('global_step', global_step)
-        tf.summary.histogram('images',images)
-        tf.summary.histogram('Conv2d_1c_1x1',end_points['Conv2d_1c_1x1'])
-        tf.summary.histogram('proba_perso',end_points['Predictions_1'])        
-        tf.summary.histogram('avg_pool', end_points["AvgPool_1a"])    
-  
-        #Create the train_op#.
-        train_op = optimizer.minimize(total_loss, global_step=global_step)
-        """train_op = slim.learning.create_train_op(total_loss, optimizer)"""
-
-        
-        my_summary_op = tf.summary.merge_all()
-        #Define max steps:
-        max_step = num_epochs*num_steps_per_epoch
+    
+            #Create the train_op#.
+        with tf.name_scope("merge_summary"):       
+            my_summary_op = tf.summary.merge_all()
+            #Define max steps:
+            max_step = num_epochs*num_steps_per_epoch
 
         #Create a saver to load pre-trained model
-        saver = tf.train.Saver(variable_to_restore)
 
+        saver = tf.train.Saver(variables_to_restore)
+        def restore_wrap(scaffold, sess):
+            saver.restore(sess, ckpt)
         #Create a class Hook for your training. Handles the prints and ops to run
         #  
         class _LoggerHook(tf.train.SessionRunHook):
 
             def begin(self):
-                self._step = global_step_init
                 self.totalloss=0.0
                 self.totalacc=0.0
 
             def before_run(self, run_context):
-                self._step += 1
                 self._start_time = time.time()
                 return tf.train.SessionRunArgs([total_loss, accuracy, names_to_updates])  # Asks for loss value.
 
             def after_run(self, run_context, run_values):
                 duration = time.time() - self._start_time
                 loss_value, accuracy_value, update = run_values.results
-                if self._step % 1 == 0:
-                    num_examples_per_step = batch_size
-                    examples_per_sec = num_examples_per_step / duration
-                    sec_per_batch = float(duration)
-                    self.totalloss += loss_value
-                    self.totalacc += accuracy_value
-                    format_str = ('\r%s: step %d, avgloss = %.2f, loss = %.2f, avgacc= %.2f ,accuracy=%.2f (%.1f examples/sec; %.3f '
-                        'sec/batch)')
-                    sys.stdout.write(format_str % (datetime.time(), self._step, self.totalloss/self._step, loss_value, self.totalacc/self._step, accuracy_value,
-                               examples_per_sec, sec_per_batch))
-
+                num_examples_per_step = batch_size
+                examples_per_sec = num_examples_per_step / duration
+                sec_per_batch = float(duration)
+                self.totalloss += loss_value
+                self.totalacc += accuracy_value
+                format_str = ('\r%s:  loss = %.2f, accuracy=%.2f (%.1f examples/sec; %.3f '
+                    'sec/batch)')
+                sys.stdout.write(format_str % (datetime.time(), loss_value,accuracy_value,
+                                    examples_per_sec, sec_per_batch))
+        
         #deFINE A ConfigProto to allow gpu device
         config = tf.ConfigProto()
-        config.log_device_placement = True
+        config.log_device_placement = False
         config.gpu_options.per_process_gpu_memory_fraction = gpu_p
+
+        #Definine checkpoint path for restoring the model
+       
+        
         #Define your supervisor for running a managed session:
         supervisor = tf.train.MonitoredTrainingSession(checkpoint_dir=FLAGS.train_dir,
+                                                        scaffold= tf.train.Scaffold(init_fn= restore_wrap, summary_op=my_summary_op),
                                                         hooks=[tf.train.StopAtStepHook(last_step=max_step),
                                                                 tf.train.NanTensorHook(loss),
                                                                 _LoggerHook()],
                                                         config=config,
-                                                        save_checkpoint_secs=300,
+                                                        save_checkpoint_secs=150,
                                                         save_summaries_steps=20)
-        i = 0
+
         #Running session:
         with supervisor as sess:
-            ckpt = tf.train.get_checkpoint_state(FLAGS.train_dir)
-            if ckpt and ckpt.model_checkpoint_path:
-                # Restores from checkpoint
-                saver.restore(sess, ckpt.model_checkpoint_path)
-            else:
-                saver.restore(sess, checkpoint_file)
+            
             
 
+
             while not sess.should_stop():
+                _, i = sess.run([train_op, global_step])
+
                 if (i+1) % num_steps_per_epoch == 0:
-                    ckpt_eval = tf.train.get_checkpoint_state(FLAGS.train_dir)
-                    evaluate(ckpt_eval.model_checkpoint_path,
-                             dataset_dir,
-                             file_pattern,
-                             file_pattern_for_counting,
-                             labels_to_name,
-                             batch_size,
-                             image_size,
-                            )
-                sess.run(train_op)
-                i += 1
+                    ckpt_eval = tf.train.get_checkpoint_state(FLAGS.train_dir).model_checkpoint_path
+                    evaluate(ckpt_eval, dataset_dir, file_pattern, file_pattern_for_counting, labels_to_name, batch_size, image_size)
 
 if __name__ == '__main__':
     run()

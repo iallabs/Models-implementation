@@ -2,7 +2,7 @@ import tensorflow as tf
 
 from tensorflow.python.platform import tf_logging as logging
 
-import research.slim.nets.mobilenet_v1 as mobilenet_v1
+import research.slim.nets.mobilenet.mobilenet_v2 as mobilenet_v2
 
 from utils.gen_utils import load_batch, get_dataset, load_batch_dense
 
@@ -28,13 +28,12 @@ def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counti
     #Create log_dir:
     with tf.Graph().as_default():
     #=========== Evaluate ===========#
-        global_step_cs = tf.train.get_or_create_global_step()
         # Adding the graph:
-
+        global_step = tf.train.get_or_create_global_step()
         dataset = get_dataset("validation", dataset_dir, file_pattern=file_pattern, file_pattern_for_counting=file_pattern_for_counting, labels_to_name=labels_to_name)
 
         #load_batch_dense is special to densenet or nets that require the same preprocessing
-        images,_, oh_labels, labels = load_batch(dataset, batch_size, image_size, image_size, is_training=False)
+        images,_, oh_labels, labels = load_batch_dense(dataset, batch_size, image_size, image_size, is_training=False)
 
         #Calcul of batches/epoch, number of steps after decay learning rate
         num_batches_per_epoch = int(dataset.num_samples / batch_size)
@@ -42,21 +41,9 @@ def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counti
 
 
         #Create the model inference
-        with slim.arg_scope(mobilenet_v1.mobilenet_v1_arg_scope(is_training=False)):
-            net, end_points = mobilenet_v1.mobilenet_v1_050(images, num_classes = None, is_training = False)
-        
-        kernel_1= tf.get_variable('fcn-1',[1,1,512,256])
-        biase_1 = tf.get_variable('biase-1',[1,1,1,256])
-        net = tf.add(tf.nn.conv2d(net, kernel_1, [1,1,1,1], padding="VALID", name='Conv2d_1c_1x1'), biase_1)
-        end_points['Conv2d_1c_1x1']= net
-        kernel_2 = tf.get_variable('fcn-2',[1,1,256,128])
-        biase_2 = tf.get_variable('biase-2',[1,1,1,128])
-        net = tf.add(tf.nn.conv2d(net, kernel_2, [1,1,1,1], padding="VALID", name='Conv2d_2c_1x1'), biase_2)
-        end_points['Conv2d_2c_1x1']= net
-        kernel_3 = tf.get_variable('fcn-3',[1,1,128,len(labels_to_name)])
-        biase_3 = tf.get_variable('biase-3',[1,1,1,len(labels_to_name)])
-        logits = tf.add(tf.nn.conv2d(net, kernel_3, [1,1,1,1], padding="VALID", name='Conv2d_2c_1x1'), biase_3)
-        logits = tf.squeeze(logits, [1, 2], name='SpatialSqueeze')
+        with slim.arg_scope(mobilenet_v2.training_scope(is_training=False)):
+            #TODO: Check mobilenet_v1 module, var "excluding
+            logits, end_points = mobilenet_v2.mobilenet(images, num_classes = len(labels_to_name), is_training = False)
         variables_to_restore = slim.get_variables_to_restore()
         end_points['Predictions_1'] = logits
         #Defining accuracy and predictions:
@@ -66,7 +53,7 @@ def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counti
 
         #Define the metrics to evaluate
         names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({
-        'Accuracy_validation': slim.metrics.streaming_accuracy(predictions, labels),
+        'Accuracy_validation': tf.metrics.accuracy(labels, predictions),
         })
         for name, value in names_to_values.items():
             summary_name = 'eval/%s' % name

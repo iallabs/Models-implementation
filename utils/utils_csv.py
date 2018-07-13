@@ -121,11 +121,8 @@ def _convert_dataset(split_name, grouped, class_names_to_ids, dataset_dir, tfrec
                             class_name = row['Finding Labels']"""
                         #MURA dataset extracting labels
                         class_name = row[0].split('/')[-2].split('_')[-1]
-                        print(row[0])
-                        print(class_name)
                         class_id = class_names_to_ids[class_name]
-                        print(class_id)
-                        example = image_to_tfexample(image_data, row[0].encode(), 'jpg'.encode(),
+                        example = image_to_tfexample(image_data, row[0].encode(), 'png'.encode(),
                                                     height, width, class_id)
         
                         tfrecord_writer.write(example.SerializeToString())
