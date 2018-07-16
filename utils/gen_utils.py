@@ -4,14 +4,16 @@ from research.slim.preprocessing import inception_preprocessing
 import DenseNet.preprocessing.densenet_pre as dp
 slim = tf.contrib.slim
 
-items_to_descriptions = {
-    'image': 'A 3-channel RGB coloured flower image that is either... ....',
-    'label': 'A label that is as such -- fruits'
-}
+
 
 def get_dataset(phase_name, dataset_dir, file_pattern, file_pattern_for_counting, labels_to_name):
     """Creates dataset based on phased_name(train or validation), datatset_dir. """
-    
+    items_to_descriptions = {
+    'image': 'A 3-channel RGB coloured flower image that is either... ....',
+    'height': 'true height',
+    'width':'true width',
+    'label': 'A label that is as such -- fruits'
+}
     #On vérifie si phase_name est 'train' ou 'validation'
     if phase_name not in ['train', 'validation']:
         raise ValueError('The phase_name %s is not recognized. Please input either train or validation as the phase_name' % (phase_name))
@@ -35,7 +37,7 @@ def get_dataset(phase_name, dataset_dir, file_pattern, file_pattern_for_counting
         'image/height': tf.FixedLenFeature((), tf.int64),
         'image/width': tf.FixedLenFeature((), tf.int64),
         'image/format': tf.FixedLenFeature((), tf.string, default_value='jpg'),
-        'image/class/label':tf.FixedLenFeature((), tf.int64,default_value=tf.zeros([], dtype=tf.int64)),
+        'image/class/label':tf.FixedLenFeature((), tf.int64),
     }
 
     #Create the items_to_handlers dictionary for the decoder.
@@ -60,7 +62,7 @@ def get_dataset(phase_name, dataset_dir, file_pattern, file_pattern_for_counting
         num_samples = num_samples,
         num_classes = num_class,
         labels_to_name = labels_map,
-        items_to_descriptions = items_to_descriptions)
+        items_to_descriptions=items_to_descriptions)
     
     return dataset
 
@@ -75,9 +77,8 @@ def load_batch(dataset, batch_size, height, width,is_training=True, shuffle=True
     #First, create a provider given by slim:
     provider = slim.dataset_data_provider.DatasetDataProvider(
         dataset,
-        common_queue_capacity = 24 + 3*batch_size,
-        common_queue_min = 24,
-        shuffle = shuffle
+        num_readers=8,
+        shuffle=shuffle
     )
 
     raw_image, true_height, true_width, label = provider.get(['image','height','width','label'])
@@ -123,8 +124,7 @@ def load_batch_dense(dataset, batch_size, height, width,is_training=True, shuffl
     #First, create a provider given by slim:
     provider = slim.dataset_data_provider.DatasetDataProvider(
         dataset,
-        common_queue_capacity = 24 + 3*batch_size,
-        common_queue_min = 24,
+        num_readers=8,
         shuffle=shuffle
     )
 

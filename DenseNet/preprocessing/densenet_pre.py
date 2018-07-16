@@ -199,7 +199,7 @@ def _mean_image_subtraction(image, means,stds):
     
     for i in range(num_channels):
 
-        channels[i] = 0.5 + (means[i]-channels[i])/2*stds[i]
+        channels[i] = (means[i]-channels[i])/stds[i]
 
     return tf.concat(axis=2, values=channels)
 
@@ -294,11 +294,9 @@ def preprocess_for_train(image,
     """image = _aspect_preserving_resize(image, resize_side_min)
     image = _central_crop([image], output_height, output_width)[0]"""
     image = tf.image.resize_bilinear(tf.expand_dims(image,0),[output_height, output_width])[0]
-    image.set_shape([output_height, output_width, 3])
-    """image = tf.to_float(image)"""
-    
-    image = _mean_image_subtraction(image, [_R_MEAN, _G_MEAN, _B_MEAN], [_R_STD, _G_STD, _B_STD ])
-
+    image = tf.image.random_flip_left_right(image)
+    image = _mean_image_subtraction(image, [_R_MEAN,_G_MEAN,_B_MEAN], [_R_STD,_G_STD,_B_STD])
+    """image = tf.image.per_image_standardization(image)"""
     tf.summary.image("final_image", tf.expand_dims(image,0))
     return image
 
@@ -324,10 +322,8 @@ def preprocess_for_eval(image, output_height, output_width, resize_side):
     """image = _aspect_preserving_resize(image, resize_side)
     image = _central_crop([image], output_height, output_width)[0]"""
     image = tf.image.resize_bilinear(tf.expand_dims(image,0),[output_height, output_width])[0]
-    image.set_shape([output_height, output_width, 3])
-    """image = tf.to_float(image)"""
-
-    image = _mean_image_subtraction(image, [_R_MEAN, _G_MEAN, _B_MEAN], [_R_STD, _G_STD, _B_STD ])
+    image = _mean_image_subtraction(image, [_R_MEAN,_G_MEAN,_B_MEAN], [_R_STD,_G_STD,_B_STD])
+    """image = tf.image.per_image_standardization(image)"""
 
     tf.summary.image("final_image", tf.expand_dims(image,0))
     return image

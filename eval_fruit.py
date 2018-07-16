@@ -41,39 +41,40 @@ def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counti
 
 
         #Create the model inference
-        with slim.arg_scope(mobilenet_v2.training_scope(is_training=False)):
+
             #TODO: Check mobilenet_v1 module, var "excluding
-            logits, end_points = mobilenet_v2.mobilenet(images, num_classes = len(labels_to_name), is_training = False)
+        logits, end_points = mobilenet_v2.mobilenet(images,depth_multiplier=1.4, num_classes = len(labels_to_name), is_training = False)
+        end_points['Predictions_1'] = tf.nn.sigmoid(logits, name="sigmoid")
         variables_to_restore = slim.get_variables_to_restore()
-        end_points['Predictions_1'] = logits
+        
         #Defining accuracy and predictions:
-    
+        loss = tf.losses.sigmoid_cross_entropy(multi_class_labels=oh_labels, logits=logits)
+        total_loss = tf.reduce_mean(tf.losses.get_total_loss())
         predictions = tf.argmax(end_points['Predictions_1'], 1)
         probabilities = end_points['Predictions_1']
 
         #Define the metrics to evaluate
         names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({
-        'Accuracy_validation': tf.metrics.accuracy(labels, predictions),
+        'Accuracy_validation': tf.metrics.accuracy(tf.argmax(oh_labels,1), predictions),
         })
         for name, value in names_to_values.items():
             summary_name = 'eval/%s' % name
             op = tf.summary.scalar(summary_name, value, collections=[])
             tf.add_to_collection(tf.GraphKeys.SUMMARIES, op)
         #Define and merge summaries:
+        tf.summary.scalar('eval/loss', total_loss)
         tf.summary.histogram('Predictions_validation', probabilities)
         summary_op_val = tf.summary.merge_all()
 
         #This is the common way to define evaluation using slim
         max_step = num_epochs*num_steps_per_epoch
-        initial_op=tf.group(tf.global_variables_initializer(),
-                        tf.local_variables_initializer())
+
 
         slim.evaluation.evaluate_once(
             master = '',  
             checkpoint_path = checkpoint_eval,
             logdir = log_dir,
             num_evals = max_step,
-            initial_op = initial_op,
             eval_op = list(names_to_updates.values()),
             summary_op = summary_op_val,
             variables_to_restore = variables_to_restore)
