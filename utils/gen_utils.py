@@ -77,8 +77,10 @@ def load_batch(dataset, batch_size, height, width,is_training=True, shuffle=True
     #First, create a provider given by slim:
     provider = slim.dataset_data_provider.DatasetDataProvider(
         dataset,
-        num_readers=8,
-        shuffle=shuffle
+        num_readers=batch_size,
+        num_epochs=None,
+        seed=2,
+        shuffle=shuffle,
     )
 
     raw_image, true_height, true_width, label = provider.get(['image','height','width','label'])
@@ -99,21 +101,21 @@ def load_batch(dataset, batch_size, height, width,is_training=True, shuffle=True
         images, raw_images, one_hot_labels, labels = tf.train.shuffle_batch(
             [image, raw_image, one_hot_labels, label],
             batch_size = batch_size,
-            num_threads = 4,
-            capacity = 4 * batch_size,
+            num_threads = 2,
+            capacity =2 * batch_size,
             min_after_dequeue = batch_size,
             allow_smaller_final_batch = True)
     else:
         images, raw_images, one_hot_labels, labels = tf.train.batch(
             [image, raw_image, one_hot_labels, label],
             batch_size = batch_size,
-            num_threads = 4,
-            capacity = 4 * batch_size,
+            num_threads = 2,
+            capacity = 2 * batch_size,
             allow_smaller_final_batch = True)
 
     return images, raw_images, one_hot_labels, labels
 
-def load_batch_dense(dataset, batch_size, height, width,is_training=True, shuffle=True):
+def load_batch_dense(dataset, batch_size, height, width, num_epochs, is_training=True, shuffle=True):
 
     """ Function for loading a train batch 
     OUTPUTS:
@@ -124,8 +126,9 @@ def load_batch_dense(dataset, batch_size, height, width,is_training=True, shuffl
     #First, create a provider given by slim:
     provider = slim.dataset_data_provider.DatasetDataProvider(
         dataset,
-        num_readers=8,
-        shuffle=shuffle
+        num_readers=batch_size,
+        seed=2,
+        shuffle=shuffle,
     )
 
     raw_image, true_height, true_width, label = provider.get(['image','height','width','label'])
@@ -147,16 +150,16 @@ def load_batch_dense(dataset, batch_size, height, width,is_training=True, shuffl
         images, raw_images, one_hot_labels, labels = tf.train.shuffle_batch(
             [image, raw_image, one_hot_labels, label],
             batch_size = batch_size,
-            num_threads = 4,
-            capacity = 4 * batch_size,
+            num_threads = 2,
+            capacity = 2 * batch_size,
             min_after_dequeue = batch_size,
             allow_smaller_final_batch = True)
     else:
         images, raw_images, one_hot_labels, labels = tf.train.batch(
             [image, raw_image, one_hot_labels, label],
             batch_size = batch_size,
-            num_threads = 4,
-            capacity = 4 * batch_size,
+            num_threads = 2,
+            capacity = 2 * batch_size,
             allow_smaller_final_batch = True)
 
     return images, raw_images, one_hot_labels, labels

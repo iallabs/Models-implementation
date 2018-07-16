@@ -30,10 +30,11 @@ def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counti
     #=========== Evaluate ===========#
         # Adding the graph:
         global_step = tf.train.get_or_create_global_step()
-        dataset = get_dataset("validation", dataset_dir, file_pattern=file_pattern, file_pattern_for_counting=file_pattern_for_counting, labels_to_name=labels_to_name)
+        dataset = get_dataset("validation", dataset_dir, file_pattern=file_pattern,
+                             file_pattern_for_counting=file_pattern_for_counting, labels_to_name=labels_to_name)
 
         #load_batch_dense is special to densenet or nets that require the same preprocessing
-        images,_, oh_labels, labels = load_batch_dense(dataset, batch_size, image_size, image_size, is_training=False)
+        images,_, oh_labels, labels = load_batch_dense(dataset, batch_size, image_size, image_size,num_epochs, is_training=False, shuffle=False)
 
         #Calcul of batches/epoch, number of steps after decay learning rate
         num_batches_per_epoch = int(dataset.num_samples / batch_size)
@@ -43,7 +44,7 @@ def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counti
         #Create the model inference
 
             #TODO: Check mobilenet_v1 module, var "excluding
-        logits, end_points = mobilenet_v2.mobilenet(images,depth_multiplier=1.4, num_classes = len(labels_to_name), is_training = False)
+        logits, end_points = mobilenet_v2.mobilenet(images,depth_multiplier=1.0, num_classes = len(labels_to_name), is_training = False)
         end_points['Predictions_1'] = tf.nn.sigmoid(logits, name="sigmoid")
         variables_to_restore = slim.get_variables_to_restore()
         
@@ -65,10 +66,9 @@ def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counti
         tf.summary.scalar('eval/loss', total_loss)
         tf.summary.histogram('Predictions_validation', probabilities)
         summary_op_val = tf.summary.merge_all()
-
+        summary_hook = tf.train.SummarySaverHook(save_steps=1, summary_op=summary_op_val)
         #This is the common way to define evaluation using slim
         max_step = num_epochs*num_steps_per_epoch
-
 
         slim.evaluation.evaluate_once(
             master = '',  
@@ -76,5 +76,6 @@ def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counti
             logdir = log_dir,
             num_evals = max_step,
             eval_op = list(names_to_updates.values()),
-            summary_op = summary_op_val,
-            variables_to_restore = variables_to_restore)
+            variables_to_restore = variables_to_restore,
+            hooks=[summary_hook])
+        
