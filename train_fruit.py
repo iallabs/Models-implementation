@@ -130,27 +130,27 @@ labels_to_name = {
 #Nombre d'époques pour l'entraînement
 num_epochs = 10
 #State your batch size
-batch_size = 1
+batch_size = 8
 #Learning rate information and configuration (Up to you to experiment)
-initial_learning_rate = 3e-4
+initial_learning_rate = 1e-4
 learning_rate_decay_factor = 0.95
 num_epochs_before_decay = 1
 
 def run():
     #Create log_dir:
     if not os.path.exists(train_dir):
-        os.mkdir(train_dir)
+        os.mkdir(os.getcwd()+'/'+train_dir)
 
     #===================================================================== Training ===========================================================================#
     #Adding the graph:
     tf.logging.set_verbosity(tf.logging.INFO) #Set the verbosity to INFO level
     with tf.Graph().as_default() as graph:
         with tf.name_scope("dataset"):
-            dataset = get_dataset("train", dataset_dir, file_pattern=file_pattern,
+            dataset= get_dataset("train", dataset_dir, file_pattern=file_pattern,
                                  file_pattern_for_counting=file_pattern_for_counting, labels_to_name=labels_to_name)
         with tf.name_scope("load_data"):
-            images,_, oh_labels, labels = load_batch_dense(dataset, batch_size, image_size, image_size,num_epochs,
-                                                             shuffle=False, is_training=True)
+            images,_, oh_labels, labels = load_batch_dense(dataset, batch_size, image_size, image_size, num_epochs,
+                                                            shuffle=True, is_training=True)
 
         #Calcul of batches/epoch, number of steps after decay learning rate
         num_batches_per_epoch = int(dataset.num_samples / batch_size)
@@ -172,11 +172,11 @@ def run():
 
         #We reconstruct a FCN block on top of our final conv layer.
         
-        end_points['Predictions_1'] = tf.nn.sigmoid(logits)
+        end_points['Predictions_1'] = tf.nn.softmax(logits)
 
         #Defining losses and regulization ops:
         with tf.name_scope("loss_op"):
-            loss = tf.losses.sigmoid_cross_entropy(multi_class_labels = oh_labels, logits = logits)
+            loss = tf.losses.softmax_cross_entropy(onehot_labels = oh_labels, logits = logits)
        
             total_loss = tf.reduce_mean(tf.losses.get_total_loss())  #obtain the regularization losses as well
         
@@ -220,7 +220,7 @@ def run():
         with tf.name_scope("merge_summary"):       
             my_summary_op = tf.summary.merge_all()
             #Define max steps:
-            max_step = num_epochs*num_steps_per_epoch
+        max_step = num_epochs*num_steps_per_epoch
 
         #Create a saver to load pre-trained model
         if ckpt==checkpoint_file:
@@ -273,15 +273,15 @@ def run():
                                                         config=config,
                                                         save_summaries_steps=20,
                                                         save_checkpoint_secs=520)
-        txt_file = open("Output.txt", "w")
+        """txt_file = open("Output.txt", "w")"""
         #Running session:
         with supervisor as sess:
             while not sess.should_stop():
                 _, i, a,b,c = sess.run([train_op, global_step,labels, oh_labels, end_points['Predictions_1']])
-                txt_file.write("*****step i***** " + str(i) + "\n" +"labels : "+ str(a) + "\n" + "oh_labels : "+str(b) + "\n"+"predictions : "+str(c)+"\n")
+                """txt_file.write("*****step i***** " + str(i) + "\n" +"labels : "+ str(a) + "\n" + "oh_labels : "+str(b) + "\n"+"predictions : "+str(c)+"\n")"""
                 if (i+1) % num_steps_per_epoch == 0:
                     ckpt_eval = tf.train.get_checkpoint_state(train_dir).model_checkpoint_path
                     evaluate(ckpt_eval, dataset_dir, file_pattern, file_pattern_for_counting, labels_to_name, batch_size, image_size)
-            txt_file.close()
+        """txt_file.close()"""
 if __name__ == '__main__':
     run()

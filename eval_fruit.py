@@ -20,8 +20,6 @@ log_dir= main_dir + "/log_eval"
 
 #=======Training Informations======#
 #Nombre d'époques pour l'entraînement
-num_epochs = 1
-
 def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counting, labels_to_name, batch_size, image_size):
     if not os.path.exists(log_dir):
         os.mkdir(log_dir)
@@ -30,26 +28,26 @@ def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counti
     #=========== Evaluate ===========#
         # Adding the graph:
         global_step = tf.train.get_or_create_global_step()
-        dataset = get_dataset("validation", dataset_dir, file_pattern=file_pattern,
+        dataset= get_dataset("validation", dataset_dir, file_pattern=file_pattern,
                              file_pattern_for_counting=file_pattern_for_counting, labels_to_name=labels_to_name)
 
         #load_batch_dense is special to densenet or nets that require the same preprocessing
-        images,_, oh_labels, labels = load_batch_dense(dataset, batch_size, image_size, image_size,num_epochs, is_training=False, shuffle=False)
+        images,_, oh_labels, labels = load_batch_dense(dataset, batch_size, image_size, image_size,1,
+                                                         is_training=False, shuffle=False)
 
         #Calcul of batches/epoch, number of steps after decay learning rate
         num_batches_per_epoch = int(dataset.num_samples / batch_size)
-        num_steps_per_epoch = num_batches_per_epoch #Because one step is one batch processed
 
 
         #Create the model inference
 
             #TODO: Check mobilenet_v1 module, var "excluding
         logits, end_points = mobilenet_v2.mobilenet(images,depth_multiplier=1.0, num_classes = len(labels_to_name), is_training = False)
-        end_points['Predictions_1'] = tf.nn.sigmoid(logits, name="sigmoid")
+        end_points['Predictions_1'] = tf.nn.softmax(logits, name="sigmoid")
         variables_to_restore = slim.get_variables_to_restore()
         
         #Defining accuracy and predictions:
-        loss = tf.losses.sigmoid_cross_entropy(multi_class_labels=oh_labels, logits=logits)
+        loss = tf.losses.loss = tf.losses.softmax_cross_entropy(onehot_labels = oh_labels, logits = logits)
         total_loss = tf.reduce_mean(tf.losses.get_total_loss())
         predictions = tf.argmax(end_points['Predictions_1'], 1)
         probabilities = end_points['Predictions_1']
@@ -66,16 +64,14 @@ def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counti
         tf.summary.scalar('eval/loss', total_loss)
         tf.summary.histogram('Predictions_validation', probabilities)
         summary_op_val = tf.summary.merge_all()
-        summary_hook = tf.train.SummarySaverHook(save_steps=1, summary_op=summary_op_val)
         #This is the common way to define evaluation using slim
-        max_step = num_epochs*num_steps_per_epoch
 
         slim.evaluation.evaluate_once(
             master = '',  
             checkpoint_path = checkpoint_eval,
             logdir = log_dir,
-            num_evals = max_step,
+            num_evals = num_batches_per_epoch,
             eval_op = list(names_to_updates.values()),
             variables_to_restore = variables_to_restore,
-            hooks=[summary_hook])
+            summary_op=summary_op_val)
         
