@@ -258,7 +258,7 @@ def run():
         
         #deFINE A ConfigProto to allow gpu device
         config = tf.ConfigProto()
-        config.log_device_placement = False
+        config.log_device_placement = True
         config.gpu_options.per_process_gpu_memory_fraction = gpu_p
 
         #Definine checkpoint path for restoring the model
@@ -272,7 +272,7 @@ def run():
                                                                 _LoggerHook()],
                                                         config=config,
                                                         save_summaries_steps=20,
-                                                        save_checkpoint_secs=2520)
+                                                        save_checkpoint_secs=250)
         txt_file = open("Output.txt", "w")
         #Running session:
         with supervisor as sess:
