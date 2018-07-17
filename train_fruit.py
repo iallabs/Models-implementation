@@ -272,16 +272,16 @@ def run():
                                                                 _LoggerHook()],
                                                         config=config,
                                                         save_summaries_steps=20,
-                                                        save_checkpoint_secs=520)
-        """txt_file = open("Output.txt", "w")"""
+                                                        save_checkpoint_secs=2520)
+        txt_file = open("Output.txt", "w")
         #Running session:
         with supervisor as sess:
             while not sess.should_stop():
                 _, i, a,b,c = sess.run([train_op, global_step,labels, oh_labels, end_points['Predictions_1']])
-                """txt_file.write("*****step i***** " + str(i) + "\n" +"labels : "+ str(a) + "\n" + "oh_labels : "+str(b) + "\n"+"predictions : "+str(c)+"\n")"""
+                txt_file.write("*****step i***** " + str(i) + "\n" +"labels : "+ str(a) + "\n" + "oh_labels : "+str(b) + "\n"+"predictions : "+str(c)+"\n")
                 if (i+1) % num_steps_per_epoch == 0:
                     ckpt_eval = tf.train.get_checkpoint_state(train_dir).model_checkpoint_path
                     evaluate(ckpt_eval, dataset_dir, file_pattern, file_pattern_for_counting, labels_to_name, batch_size, image_size)
-        """txt_file.close()"""
+        txt_file.close()
 if __name__ == '__main__':
     run()

@@ -113,7 +113,7 @@ def load_batch(dataset, batch_size, height, width, num_epochs, is_training=True,
 
     return images, raw_images, one_hot_labels, labels
 
-def load_batch_dense(dataset, batch_size, height, width, num_epochs, is_training=True, shuffle=True):
+def load_batch_dense(dataset, batch_size, height, width, num_epochs=None, is_training=True, shuffle=True):
 
     """ Function for loading a train batch 
     OUTPUTS:
@@ -124,6 +124,7 @@ def load_batch_dense(dataset, batch_size, height, width, num_epochs, is_training
     #First, create a provider given by slim:
     provider = slim.dataset_data_provider.DatasetDataProvider(
         dataset,
+        num_epochs=num_epochs,
         num_readers=4
     )
 
@@ -147,7 +148,7 @@ def load_batch_dense(dataset, batch_size, height, width, num_epochs, is_training
             [image, raw_image, one_hot_labels, label],
             batch_size = batch_size,
             num_threads = 4,
-            capacity = 50*batch_size,
+            capacity = 1000*batch_size,
             min_after_dequeue = batch_size,
             allow_smaller_final_batch = True)
     else:
@@ -155,7 +156,7 @@ def load_batch_dense(dataset, batch_size, height, width, num_epochs, is_training
             [image, raw_image, one_hot_labels, label],
             batch_size = batch_size,
             num_threads = 4,
-            capacity = 50*batch_size,
+            capacity = 1000*batch_size,
             allow_smaller_final_batch = True)
 
     return images, raw_images, one_hot_labels, labels
