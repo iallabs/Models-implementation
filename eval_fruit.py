@@ -42,7 +42,7 @@ def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counti
         #Create the model inference
 
             #TODO: Check mobilenet_v1 module, var "excluding
-        logits, end_points = mobilenet_v2.mobilenet(images,depth_multiplier=1.0, num_classes = len(labels_to_name), is_training = False)
+        logits, end_points = mobilenet_v2.mobilenet(images,depth_multiplier=1.4, num_classes = len(labels_to_name), is_training = False)
         end_points['Predictions_1'] = tf.nn.softmax(logits, name="sigmoid")
         variables_to_restore = slim.get_variables_to_restore()
         
