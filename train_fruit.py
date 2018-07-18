@@ -6,7 +6,6 @@ from tensorflow.python.platform import tf_logging as logging
 import research.slim.nets.mobilenet.mobilenet_v2 as mobilenet_v2
 
 from utils.gen_utils import load_batch, get_dataset, load_batch_dense
-from eval_fruit import evaluate
 
 import os
 import sys
@@ -160,7 +159,7 @@ def run():
         #Create the model inference
         with slim.arg_scope(mobilenet_v2.training_scope(is_training=True, weight_decay=0.0004, stddev=0.01, dropout_keep_prob=0.999, bn_decay=0.997)):
             #TODO: Check mobilenet_v1 module, var "excluding
-            logits, end_points = mobilenet_v2.mobilenet(images,depth_multiplier=1.4, num_classes = len(labels_to_name), is_training = True)
+            logits, end_points = mobilenet_v2.mobilenet(images,depth_multiplier=1.0, num_classes = len(labels_to_name), is_training = True)
             
         excluding = ['MobilenetV2/Logits/Conv2d_1c_1x1']   
         variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
@@ -178,7 +177,7 @@ def run():
         with tf.name_scope("loss_op"):
             loss = tf.losses.softmax_cross_entropy(onehot_labels = oh_labels, logits = logits)
        
-            total_loss = tf.reduce_mean(tf.losses.get_total_loss())  #obtain the regularization losses as well
+            total_loss = tf.losses.get_total_loss()#obtain the regularization losses as well
         
         #Create the global step for monitoring the learning_rate and training:
         global_step = tf.train.get_or_create_global_step()
@@ -225,14 +224,20 @@ def run():
         #Create a saver to load pre-trained model
         if ckpt==checkpoint_file:
             saver = tf.train.Saver(variables_to_restore)
+        #Define a restore function wrapped for scaffold
         def restore_wrap(scaffold, sess):
             if ckpt != checkpoint_file:
                 scaffold.saver.restore(sess, ckpt)
             else:
                 saver.restore(sess, ckpt)
-
+        #Define a step_fn function to run the train step: Special to monitored training session:
+        txt_file = open("Output.txt", "w")
+        def step_fn(step_context):
+            value, i,a,b,c = step_context.run_with_hooks([train_op, global_step,labels, oh_labels, end_points['Predictions_1']])
+            txt_file.write("*****step i***** " + str(i) + "\n" +"labels : "+ str(a) + "\n" + "oh_labels : "+str(b) +\
+                            "\n"+"predictions : "+str(c)+"\n")
+            return value
         #Create a class Hook for your training. Handles the prints and ops to run
-        #  
         class _LoggerHook(tf.train.SessionRunHook):
 
             def begin(self):
@@ -255,33 +260,29 @@ def run():
                     'sec/batch)')
                 sys.stdout.write(format_str % (datetime.time(), loss_value,accuracy_value,
                                     examples_per_sec, sec_per_batch))
-        
+
         #deFINE A ConfigProto to allow gpu device
         config = tf.ConfigProto()
         config.log_device_placement = True
         config.gpu_options.per_process_gpu_memory_fraction = gpu_p
 
         #Definine checkpoint path for restoring the model
+        
         scaffold = tf.train.Scaffold(init_fn= restore_wrap, summary_op=my_summary_op)
-
+        saver_hook= tf.train.CheckpointSaverHook(train_dir,save_steps=num_batches_per_epoch,scaffold=scaffold)
+        summary_hook = tf.train.SummarySaverHook(save_steps=20, output_dir=train_dir, scaffold=scaffold)
         #Define your supervisor for running a managed session:
-        supervisor = tf.train.MonitoredTrainingSession(checkpoint_dir=FLAGS.train_dir,
-                                                        scaffold= scaffold,
-                                                        hooks=[tf.train.StopAtStepHook(last_step=max_step),
-                                                                tf.train.NanTensorHook(loss),
-                                                                _LoggerHook()],
-                                                        config=config,
-                                                        save_summaries_steps=20,
-                                                        save_checkpoint_secs=250)
-        txt_file = open("Output.txt", "w")
+        supervisor = tf.train.MonitoredSession( session_creator=tf.train.ChiefSessionCreator(master='',checkpoint_dir=train_dir,
+                                                                                             config=config, scaffold=scaffold),
+                                                hooks=[tf.train.StopAtStepHook(last_step=max_step),
+                                                        tf.train.NanTensorHook(loss), saver_hook,
+                                                        _LoggerHook(), summary_hook])
+        
         #Running session:
         with supervisor as sess:
             while not sess.should_stop():
-                _, i, a,b,c = sess.run([train_op, global_step,labels, oh_labels, end_points['Predictions_1']])
-                txt_file.write("*****step i***** " + str(i) + "\n" +"labels : "+ str(a) + "\n" + "oh_labels : "+str(b) + "\n"+"predictions : "+str(c)+"\n")
-                if (i+1) % num_steps_per_epoch == 0:
-                    ckpt_eval = tf.train.get_checkpoint_state(train_dir).model_checkpoint_path
-                    evaluate(ckpt_eval, dataset_dir, file_pattern, file_pattern_for_counting, labels_to_name, batch_size, image_size)
+                _ = sess.run_step_fn(step_fn)
+                
         txt_file.close()
 if __name__ == '__main__':
     run()

@@ -14,15 +14,20 @@ slim = tf.contrib.slim
 
 
 #=======Dataset Informations=======#
-
+dataset_dir = "D:/MURA-v1.1"
 main_dir = "./train_fruit"
 log_dir= main_dir + "/log_eval"
-
+file_pattern = "MURA_%s_*.tfrecord"
+file_pattern_for_counting = "MURA"
+batch_size = 8
+image_size = 224
+labels_to_name= {0:"negative", 1:"positive"}
+train_dir = main_dir+"/training"
 #=======Training Informations======#
 #Nombre d'époques pour l'entraînement
 def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counting, labels_to_name, batch_size, image_size):
-    if not os.path.exists(log_dir):
-        os.mkdir(log_dir)
+    if not os.path.exists(train_dir):
+        os.mkdir(train_dir)
     #Create log_dir:
     with tf.Graph().as_default():
     #=========== Evaluate ===========#
@@ -32,7 +37,7 @@ def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counti
                              file_pattern_for_counting=file_pattern_for_counting, labels_to_name=labels_to_name)
 
         #load_batch_dense is special to densenet or nets that require the same preprocessing
-        images,_, oh_labels, labels = load_batch_dense(dataset, batch_size, image_size, image_size,1,
+        images,_, oh_labels, labels = load_batch_dense(dataset, batch_size, image_size, image_size,
                                                          is_training=False, shuffle=False)
 
         #Calcul of batches/epoch, number of steps after decay learning rate
@@ -42,7 +47,7 @@ def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counti
         #Create the model inference
 
             #TODO: Check mobilenet_v1 module, var "excluding
-        logits, end_points = mobilenet_v2.mobilenet(images,depth_multiplier=1.4, num_classes = len(labels_to_name), is_training = False)
+        logits, end_points = mobilenet_v2.mobilenet(images,depth_multiplier=1.0, num_classes = len(labels_to_name), is_training = False)
         end_points['Predictions_1'] = tf.nn.softmax(logits, name="sigmoid")
         variables_to_restore = slim.get_variables_to_restore()
         
@@ -74,4 +79,6 @@ def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counti
             eval_op = list(names_to_updates.values()),
             variables_to_restore = variables_to_restore,
             summary_op=summary_op_val)
-        
+
+ckpt_eval = tf.train.get_checkpoint_state(train_dir).model_checkpoint_path
+evaluate(ckpt_eval, dataset_dir, file_pattern, file_pattern_for_counting, labels_to_name, batch_size, image_size)
