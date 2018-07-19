@@ -71,9 +71,9 @@ def _get_dataset_filename(dataset_dir, split_name, shard_id, tfrecord_filename, 
 
     return os.path.join(dataset_dir, output_filename)
 
-def _get_infos(dataset_dir):
+def _get_infos(dataset_dir, csv_name):
     """Data_Entry_csv is the csv filename discribing"""
-    path_info = os.path.join(dataset_dir, 'valid_image_paths.csv')
+    path_info = os.path.join(dataset_dir, csv_name)
     grouped = pd.read_csv(path_info)
     
     return grouped
@@ -122,6 +122,8 @@ def _convert_dataset(split_name, grouped, class_names_to_ids, dataset_dir, tfrec
                         #MURA dataset extracting labels
                         class_name = row[0].split('/')[-2].split('_')[-1]
                         class_id = class_names_to_ids[class_name]
+                        print(row[0])
+                        print(class_id)
                         example = image_to_tfexample(image_data, row[0].encode(), 'png'.encode(),
                                                     height, width, class_id)
         

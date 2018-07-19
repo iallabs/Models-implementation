@@ -15,14 +15,14 @@ slim = tf.contrib.slim
 
 #=======Dataset Informations=======#
 dataset_dir = "D:/MURA-v1.1"
-main_dir = "./train_fruit"
-log_dir= main_dir + "/log_eval"
+main_dir = os.getcwd()
+log_dir= main_dir + "\\train_fruit\\log_eval"
 file_pattern = "MURA_%s_*.tfrecord"
 file_pattern_for_counting = "MURA"
 batch_size = 8
 image_size = 224
 labels_to_name= {0:"negative", 1:"positive"}
-train_dir = main_dir+"/training"
+train_dir = main_dir+"\\train_fruit\\training"
 #=======Training Informations======#
 #Nombre d'époques pour l'entraînement
 def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counting, labels_to_name, batch_size, image_size):
@@ -33,6 +33,7 @@ def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counti
     #=========== Evaluate ===========#
         # Adding the graph:
         global_step = tf.train.get_or_create_global_step()
+        global_step = tf.assign(global_step, global_step+1)
         dataset= get_dataset("validation", dataset_dir, file_pattern=file_pattern,
                              file_pattern_for_counting=file_pattern_for_counting, labels_to_name=labels_to_name)
 
@@ -47,7 +48,7 @@ def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counti
         #Create the model inference
 
             #TODO: Check mobilenet_v1 module, var "excluding
-        logits, end_points = mobilenet_v2.mobilenet(images,depth_multiplier=1.0, num_classes = len(labels_to_name), is_training = False)
+        logits, end_points = mobilenet_v2.mobilenet(images,depth_multiplier=1.4, num_classes = len(labels_to_name), is_training = False)
         end_points['Predictions_1'] = tf.nn.softmax(logits, name="sigmoid")
         variables_to_restore = slim.get_variables_to_restore()
         
@@ -80,5 +81,7 @@ def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counti
             variables_to_restore = variables_to_restore,
             summary_op=summary_op_val)
 
+print(train_dir)
 ckpt_eval = tf.train.get_checkpoint_state(train_dir).model_checkpoint_path
+
 evaluate(ckpt_eval, dataset_dir, file_pattern, file_pattern_for_counting, labels_to_name, batch_size, image_size)

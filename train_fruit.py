@@ -37,72 +37,7 @@ file_pattern_for_counting = "MURA"
 """file_pattern = "fruit_%s_*.tfrecord"
 file_pattern_for_counting = "fruit"""
 #Création d'un dictionnaire pour reférer à chaque label
-"""labels_to_name = {0:'Apple Braeburn', 
-                1:'Apple Golden 1',
-                2:'Apple Golden 2', 
-                3:'Apple Golden 3',
-                4: 'Apple Granny Smith',
-                5: 'Apple Red 1',
-                6: 'Apple Red 2',
-                7: 'Apple Red 3',
-                8: 'Apple Red Delicious',
-                9: 'Apple Red Yellow',
-                10: 'Apricot',
-                11: 'Avocado',
-                12: 'Avocado ripe',
-                13: 'Banana',
-                14: 'Banana Red',
-                15: 'Cactus fruit',
-                16: 'Cantaloupe 1',
-                17: 'Cantaloupe 2',
-                18: 'Carambula',
-                19: 'Cherry 1',
-                20: 'Cherry 2',
-                21: 'Cherry Rainier',
-                22: 'Clementine',
-                23: 'Cocos',
-                24: 'Dates',
-                25: 'Granadilla',
-                26: 'Grape Pink',
-                27: 'Grape White',
-                28: 'Grape White 2',
-                29: 'Grapefruit Pink',
-                30: 'Grapefruit White',
-                31: 'Guava',
-                32: 'Huckleberry',
-                33: 'Kaki',
-                34: 'Kiwi',
-                35: 'Kumquats',
-                36: 'Lemon',
-                37: 'Lemon Meyer',
-                38: 'Limes',
-                39: 'Litchi',
-                40: 'Mandarine',
-                41: 'Mango',
-                42: 'Maracuja',
-                43: 'Melon Piel de Sapo',
-                44: 'Nectarine',
-                45: 'Orange',
-                46: 'Papaya',
-                47: 'Passion Fruit',
-                48: 'Peach',
-                49: 'Peach Flat',
-                50: 'Pear',
-                51: 'Pear Abate',
-                52: 'Pear Monster',
-                53: 'Pear Williams',
-                54 : 'Pepino',
-                55: 'Pineapple',
-                56: 'Pitahaya Red',
-                57: 'Plum',
-                58: 'Pomegranate',
-                59: 'Quince',
-                60: 'Raspberry',
-                61: 'Salak',
-                62: 'Strawberry',
-                63: 'Tamarillo',
-                64: 'Tangelo'
-                }"""
+
 
 """labels_to_name = {
                 0:'No Finding', 
@@ -127,13 +62,13 @@ labels_to_name = {
 }
 #=======Training Informations======#
 #Nombre d'époques pour l'entraînement
-num_epochs = 10
+num_epochs = 50
 #State your batch size
 batch_size = 8
 #Learning rate information and configuration (Up to you to experiment)
-initial_learning_rate = 1e-4
+initial_learning_rate = 1e-3
 learning_rate_decay_factor = 0.95
-num_epochs_before_decay = 1
+num_epochs_before_decay = 0.1
 
 def run():
     #Create log_dir:
@@ -159,7 +94,7 @@ def run():
         #Create the model inference
         with slim.arg_scope(mobilenet_v2.training_scope(is_training=True, weight_decay=0.0004, stddev=0.01, dropout_keep_prob=0.999, bn_decay=0.997)):
             #TODO: Check mobilenet_v1 module, var "excluding
-            logits, end_points = mobilenet_v2.mobilenet(images,depth_multiplier=1.0, num_classes = len(labels_to_name), is_training = True)
+            logits, end_points = mobilenet_v2.mobilenet(images,depth_multiplier=1.4, num_classes = len(labels_to_name), is_training = True)
             
         excluding = ['MobilenetV2/Logits/Conv2d_1c_1x1']   
         variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
@@ -241,25 +176,26 @@ def run():
         class _LoggerHook(tf.train.SessionRunHook):
 
             def begin(self):
+                self.step = 0
                 self.totalloss=0.0
                 self.totalacc=0.0
 
             def before_run(self, run_context):
                 self._start_time = time.time()
-                return tf.train.SessionRunArgs([total_loss, accuracy, names_to_updates])  # Asks for loss value.
+                return tf.train.SessionRunArgs([global_step,total_loss, accuracy, names_to_updates])  # Asks for loss value.
 
             def after_run(self, run_context, run_values):
                 duration = time.time() - self._start_time
-                loss_value, accuracy_value, update = run_values.results
+                self.step,loss_value, accuracy_value, update = run_values.results
                 num_examples_per_step = batch_size
                 examples_per_sec = num_examples_per_step / duration
                 sec_per_batch = float(duration)
                 self.totalloss += loss_value
                 self.totalacc += accuracy_value
-                format_str = ('\r%s:  loss = %.2f, accuracy=%.2f (%.1f examples/sec; %.3f '
+                format_str = ('\r%s: step %d,  avg_loss=%.3f, loss = %.2f, avg_auc=%.2f, accuracy=%.2f (%.1f examples/sec; %.3f '
                     'sec/batch)')
-                sys.stdout.write(format_str % (datetime.time(), loss_value,accuracy_value,
-                                    examples_per_sec, sec_per_batch))
+                sys.stdout.write(format_str % (datetime.time(), self.step+1, self.totalloss/(self.step+1), loss_value, 
+                                self.totalacc/(self.step+1), accuracy_value, examples_per_sec, sec_per_batch))
 
         #deFINE A ConfigProto to allow gpu device
         config = tf.ConfigProto()
@@ -269,10 +205,10 @@ def run():
         #Definine checkpoint path for restoring the model
         
         scaffold = tf.train.Scaffold(init_fn= restore_wrap, summary_op=my_summary_op)
-        saver_hook= tf.train.CheckpointSaverHook(train_dir,save_steps=num_batches_per_epoch,scaffold=scaffold)
+        saver_hook= tf.train.CheckpointSaverHook(train_dir,save_steps=num_batches_per_epoch//2,scaffold=scaffold)
         summary_hook = tf.train.SummarySaverHook(save_steps=20, output_dir=train_dir, scaffold=scaffold)
         #Define your supervisor for running a managed session:
-        supervisor = tf.train.MonitoredSession( session_creator=tf.train.ChiefSessionCreator(master='',checkpoint_dir=train_dir,
+        supervisor = tf.train.MonitoredSession( session_creator=tf.train.ChiefSessionCreator(master=None,checkpoint_dir=train_dir,
                                                                                              config=config, scaffold=scaffold),
                                                 hooks=[tf.train.StopAtStepHook(last_step=max_step),
                                                         tf.train.NanTensorHook(loss), saver_hook,

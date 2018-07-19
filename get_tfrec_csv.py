@@ -54,9 +54,9 @@ def main():
         return None
 
     #==============================================================END OF CHECKS===================================================================
-
+    csv_name = "valid_image_paths.csv"
     #Get a pandas dataframe containing each image path and text label
-    grouped = _get_infos(FLAGS.dataset_dir)
+    grouped = _get_infos(FLAGS.dataset_dir, csv_name)
 
     #Find the number of validation examples we need
     num_validation = int(FLAGS.validation_size * len(grouped))
@@ -64,19 +64,20 @@ def main():
 
 
     # Divide the training datasets into train and test:
+    """training_filenames = pd.DataFrame.sample(grouped, n=len(grouped), frac=None, random_state=3)
     training_filenames = pd.DataFrame.sample(grouped, frac=(1-FLAGS.validation_size))
-    print(len(training_filenames))
-    validation_filenames = grouped.loc[~grouped.index.isin(training_filenames.index), :]
-    print(len(validation_filenames))
+    print(len(training_filenames))"""
+    """validation_filenames = grouped.loc[~grouped.index.isin(training_filenames.index), :]
+    print(len(validation_filenames))"""
 
 
 
     # First, convert the training and validation sets.
-    _convert_dataset('train', training_filenames, class_names_to_ids,
-                     dataset_dir = FLAGS.dataset_dir, tfrecord_filename = FLAGS.tfrecord_filename, _NUM_SHARDS = FLAGS.num_shards)
-
-    """_convert_dataset('validation', validation_filenames, class_names_to_ids,
+    """_convert_dataset('train', training_filenames, class_names_to_ids,
                      dataset_dir = FLAGS.dataset_dir, tfrecord_filename = FLAGS.tfrecord_filename, _NUM_SHARDS = FLAGS.num_shards)"""
+
+    _convert_dataset('validation', grouped, class_names_to_ids,
+                     dataset_dir = FLAGS.dataset_dir, tfrecord_filename = FLAGS.tfrecord_filename, _NUM_SHARDS = FLAGS.num_shards)
 
     print('\nFinished converting the %s dataset!' % (FLAGS.tfrecord_filename))
 

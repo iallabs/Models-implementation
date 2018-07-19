@@ -58,7 +58,7 @@ def get_dataset(phase_name, dataset_dir, file_pattern, file_pattern_for_counting
         data_sources = file_pattern_path,
         decoder = decoder,
         reader = reader,
-        num_readers = 4,
+        num_readers = 8,
         num_samples = num_samples,
         num_classes = num_class,
         labels_to_name = labels_map,
@@ -125,8 +125,7 @@ def load_batch_dense(dataset, batch_size, height, width, num_epochs=None, is_tra
     provider = slim.dataset_data_provider.DatasetDataProvider(
         dataset,
         num_epochs=num_epochs,
-        num_readers=4,
-        shuffle=shuffle
+        num_readers=8,
     )
 
     raw_image, true_height, true_width, label = provider.get(['image','height','width','label'])
@@ -144,20 +143,12 @@ def load_batch_dense(dataset, batch_size, height, width, num_epochs=None, is_tra
     raw_image = tf.squeeze(raw_image)
 
     #Batch up the image by enqueing the tensors internally in a FIFO queue and dequeueing many elements with tf.train.batch.
-    if shuffle:
-        images, raw_images, one_hot_labels, labels = tf.train.shuffle_batch(
-            [image, raw_image, one_hot_labels, label],
-            batch_size = batch_size,
-            num_threads = 8,
-            capacity = 250*batch_size,
-            min_after_dequeue = 50*batch_size,
-            allow_smaller_final_batch = True)
-    else:
-        images, raw_images, one_hot_labels, labels = tf.train.batch(
-            [image, raw_image, one_hot_labels, label],
-            batch_size = batch_size,
-            num_threads = 8,
-            capacity = 250*batch_size,
-            allow_smaller_final_batch = True)
+
+    images, raw_images, one_hot_labels, labels = tf.train.batch(
+        [image, raw_image, one_hot_labels, label],
+        batch_size = batch_size,
+        num_threads = 8,
+        capacity = 32*batch_size,
+        allow_smaller_final_batch = True)
 
     return images, raw_images, one_hot_labels, labels
