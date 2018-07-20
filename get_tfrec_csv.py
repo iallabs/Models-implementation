@@ -54,15 +54,17 @@ def main():
         return None
 
     #==============================================================END OF CHECKS===================================================================
-    csv_name = "valid_image_paths.csv"
+    csv_name = "train_image_paths.csv"
     #Get a pandas dataframe containing each image path and text label
-    grouped = _get_infos(FLAGS.dataset_dir, csv_name)
+    training_filenames = _get_infos(FLAGS.dataset_dir, csv_name)
+    training_frame = pd.DataFrame.sample(training_filenames, frac=1, random_state=1)
+    print(len(training_frame))
 
-    #Find the number of validation examples we need
-    num_validation = int(FLAGS.validation_size * len(grouped))
-    print(num_validation)
-
-
+    csv_eval_name = "valid_image_paths.csv"
+    #Get a pandas dataframe containing each image path and text label
+    valid_filenames = _get_infos(FLAGS.dataset_dir, csv_eval_name)
+    valid_frame = pd.DataFrame(valid_filenames)
+    print(len(valid_frame))
     # Divide the training datasets into train and test:
     """training_filenames = pd.DataFrame.sample(grouped, n=len(grouped), frac=None, random_state=3)
     training_filenames = pd.DataFrame.sample(grouped, frac=(1-FLAGS.validation_size))
@@ -73,10 +75,10 @@ def main():
 
 
     # First, convert the training and validation sets.
-    """_convert_dataset('train', training_filenames, class_names_to_ids,
-                     dataset_dir = FLAGS.dataset_dir, tfrecord_filename = FLAGS.tfrecord_filename, _NUM_SHARDS = FLAGS.num_shards)"""
+    _convert_dataset('train', training_frame, class_names_to_ids,
+                     dataset_dir = FLAGS.dataset_dir, tfrecord_filename = FLAGS.tfrecord_filename, _NUM_SHARDS = FLAGS.num_shards)
 
-    _convert_dataset('validation', grouped, class_names_to_ids,
+    _convert_dataset('validation', valid_frame, class_names_to_ids,
                      dataset_dir = FLAGS.dataset_dir, tfrecord_filename = FLAGS.tfrecord_filename, _NUM_SHARDS = FLAGS.num_shards)
 
     print('\nFinished converting the %s dataset!' % (FLAGS.tfrecord_filename))
