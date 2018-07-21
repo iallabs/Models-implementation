@@ -148,7 +148,7 @@ def load_batch_dense(dataset, batch_size, height, width, num_epochs=None, is_tra
         [image, raw_image, one_hot_labels, label],
         batch_size = batch_size,
         num_threads = 8,
-        capacity = 32*batch_size,
+        capacity = batch_size,
         allow_smaller_final_batch = True)
 
     return images, raw_images, one_hot_labels, labels
