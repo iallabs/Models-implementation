@@ -61,7 +61,7 @@ items_to_descriptions = {
 }
 
 #=======Training Informations======#
-#Nombre d'époques pour l'entraîen
+#Nombre d'époques pour l'entraînement
 num_epochs = 60
 
 #State your batch size
@@ -84,7 +84,7 @@ def run():
         tf.logging.set_verbosity(tf.logging.INFO) #Set the verbosity to INFO level
 
         dataset = get_dataset("train", dataset_dir, file_pattern=file_pattern, file_pattern_for_counting=file_pattern_for_counting, labels_to_name=labels_to_name)
-        images,_, oh_labels, labels = load_batch_dense(dataset, batch_size, image_size, image_size, is_training=True)
+        images,_, oh_labels, _ = load_batch_dense(dataset, batch_size, image_size, image_size, is_training=True)
 
         #Calcul of batches/epoch, number of steps after decay learning rate
         num_batches_per_epoch = int(dataset.num_samples / batch_size)
@@ -96,116 +96,120 @@ def run():
             logits, end_points = densenet.densenet121(images, num_classes = len(labels_to_name), is_training = True)
         
         excluding = ['densenet121/logits','densenet121/Predictions']
-        end_points['Predictions']=logits
-        end_points['Pred_sig']=tf.nn.sigmoid(logits)
         variable_to_restore = slim.get_variables_to_restore(exclude=excluding)
+        end_points['Pred_sig']=tf.nn.sigmoid(logits)
         logit = tf.squeeze(logits)
 
         #Defining losses and regulization ops:
-        loss = tf.losses.sigmoid_cross_entropy(multi_class_labels = oh_labels, logits = logit)
-        total_loss = tf.reduce_mean(tf.losses.get_total_loss())    #obtain the regularization losses as well
+        with tf.name_scope("loss_op"):
+            loss = tf.losses.sigmoid_cross_entropy(multi_class_labels = oh_labels, logits = logit)
+            total_loss = tf.reduce_mean(tf.losses.get_total_loss())    #obtain the regularization losses as well
         
         #Create the global step for monitoring the learning_rate and training:
-        ckpt = tf.train.get_checkpoint_state(FLAGS.train_dir)
-        global_step_init = -1
-        if ckpt and ckpt.model_checkpoint_path:
-            global_step_init = int(ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1])
-            global_step = tf.Variable(global_step_init, name='global_step', dtype=tf.int64, trainable=False)
-
-        else:
-            global_step = tf.train.get_or_create_global_step()
-
-        lr = tf.train.exponential_decay(learning_rate=initial_learning_rate,
+        global_step = tf.train.get_or_create_global_step()
+        with tf.name_scope("learning_rate"):
+            lr = tf.train.exponential_decay(learning_rate=initial_learning_rate,
                                         global_step=global_step,
                                         decay_steps=decay_steps,
                                         decay_rate = learning_rate_decay_factor,
                                         staircase=True)
+
         #State the metrics that you want to predict. We get a predictions that is not one_hot_encoded.
-        predictions = tf.argmax(tf.squeeze(end_points['Predictions']),axis=1)
-        probabilities = end_points['Pred_sig']
-        accuracy = tf.reduce_mean(tf.cast(tf.equal(labels, predictions), tf.float32))
-
-        #Now finally create all the summaries you need to monitor and group them into one summary op.
-        tf.summary.scalar('losses/Total_Loss', total_loss)
-        tf.summary.scalar('accuracy', accuracy)
-        tf.summary.scalar('learning_rate', lr)
-        tf.summary.histogram('probabilities', probabilities)
-        my_summary_op = tf.summary.merge_all()
+        predictions = tf.argmax(tf.squeeze(end_points['Pred_sig']),axis=1)
+        gt = tf.argmax(oh_labels, axis=1)
+        
         #Define Optimizer with decay learning rate:
-        optimizer = tf.train.AdamOptimizer(learning_rate = lr)
-
-        #Create the train_op.
-        train_op = optimizer.minimize(total_loss, global_step=global_step)
-
-
+        with tf.name_scope("optimizer"):
+            optimizer = tf.train.AdamOptimizer(learning_rate = lr)
+            #Create the train_op.
+            train_op = optimizer.minimize(total_loss, global_step=global_step)
         
-
+        #Create all summaries needed for monitoring the training
+        with tf.name_scope("metrics"):
+            accuracy = tf.reduce_mean(tf.cast(tf.equal(gt, predictions), tf.float32))
+            predictions = tf.argmax(tf.nn.sigmoid(end_points['Predictions_1']), 1)
+                names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({
+                'Accuracy': tf.metrics.accuracy(labels, predictions),
+                })
+                for name, value in names_to_values.items():
+                    summary_name = 'train/%s' % name
+                    op = tf.summary.scalar(summary_name, value, collections=[])
+                    tf.add_to_collection(tf.GraphKeys.SUMMARIES, op)
+            tf.summary.scalar('losses/Total_Loss', total_loss)
+            tf.summary.scalar('accuracy', accuracy)
+            tf.summary.scalar('learning_rate', lr)
+            tf.summary.histogram('images', images)
+            tf.summary.histogram('probabilities', predictions)
+            my_summary_op = tf.summary.merge_all()
         
-
+        ckpt_state = tf.train.get_checkpoint_state(FLAGS.train_dir)
+        if ckpt_state and ckpt_state.model_checkpoint_path:
+            ckpt = ckpt_state.model_checkpoint_path
+        else:
+            ckpt = checkpoint_file
+        if ckpt==checkpoint_file:
+            saver = tf.train.Saver(variables_to_restore)
+        #Define a restore function wrapped for scaffold
+        def restore_wrap(scaffold, sess):
+            if ckpt != checkpoint_file:
+                scaffold.saver.restore(sess, ckpt)
+            else:
+                saver.restore(sess, ckpt)
+        #Define a step_fn function to run the train step: Special to monitored training session:
+        txt_file = open("Output.txt", "w")
+        def step_fn(step_context):
+            value, i,a,b,c = step_context.run_with_hooks([train_op, global_step,labels, oh_labels, end_points['Predictions_1']])
+            txt_file.write("*****step i***** " + str(i) + "\n" +"labels : "+ str(a) + "\n" + "oh_labels : "+str(b) +\
+                            "\n"+"predictions : "+str(c)+"\n")
+            return value
+        #Create a class Hook for your training. Handles the prints and ops to run
         class _LoggerHook(tf.train.SessionRunHook):
 
             def begin(self):
-                self._step = global_step_init
+                self.step = 0
                 self.totalloss=0.0
                 self.totalacc=0.0
 
             def before_run(self, run_context):
-                self._step += 1
                 self._start_time = time.time()
-                return tf.train.SessionRunArgs([total_loss, accuracy])  # Asks for loss value.
+                return tf.train.SessionRunArgs([global_step,total_loss, accuracy, names_to_updates])  # Asks for loss value.
 
             def after_run(self, run_context, run_values):
                 duration = time.time() - self._start_time
-                loss_value, accuracy_value = run_values.results
-                if self._step % 1 == 0:
-                    num_examples_per_step = batch_size
-                    examples_per_sec = num_examples_per_step / duration
-                    sec_per_batch = float(duration)
-                    self.totalloss += loss_value
-                    self.totalacc += accuracy_value
-                    format_str = ('\r%s: step %d, avgloss = %.2f, loss = %.2f, avgacc= %.2f ,accuracy=%.2f (%.1f examples/sec; %.3f '
-                        'sec/batch)')
-                    sys.stdout.write(format_str % (datetime.time(), self._step, self.totalloss/self._step, loss_value, self.totalacc/self._step, accuracy_value,
-                               examples_per_sec, sec_per_batch))
-                    sys.stdout.flush()
+                self.step,loss_value, accuracy_value, update = run_values.results
+                num_examples_per_step = batch_size
+                examples_per_sec = num_examples_per_step / duration
+                sec_per_batch = float(duration)
+                self.totalloss += loss_value
+                self.totalacc += accuracy_value
+                format_str = ('\r%s: step %d,  avg_loss=%.3f, loss = %.2f, avg_auc=%.2f, accuracy=%.2f (%.1f examples/sec; %.3f '
+                    'sec/batch)')
+                sys.stdout.write(format_str % (datetime.time(), self.step+1, self.totalloss/(self.step+1), loss_value, 
+                                self.totalacc/(self.step+1), accuracy_value, examples_per_sec, sec_per_batch))
 
-        max_step = num_epochs*num_steps_per_epoch
-
-        saver = tf.train.Saver(variable_to_restore)
-
+        #deFINE A ConfigProto to allow gpu device
         config = tf.ConfigProto()
         config.log_device_placement = True
         config.gpu_options.per_process_gpu_memory_fraction = gpu_p
-        #Define your supervisor for running a managed session:
-        supervisor = tf.train.MonitoredTrainingSession(checkpoint_dir=FLAGS.train_dir,
-                                                        hooks=[tf.train.StopAtStepHook(last_step=max_step),
-                                                                tf.train.NanTensorHook(loss),
-                                                                _LoggerHook()],
-                                                        config=config,
-                                                        save_checkpoint_secs=3600,
-                                                        save_summaries_steps=20)
 
+        #Definine checkpoint path for restoring the model
+        
+        scaffold = tf.train.Scaffold(init_fn= restore_wrap, summary_op=my_summary_op)
+        saver_hook= tf.train.CheckpointSaverHook(train_dir,save_steps=num_batches_per_epoch//2,scaffold=scaffold)
+        summary_hook = tf.train.SummarySaverHook(save_steps=20, output_dir=train_dir, scaffold=scaffold)
+        #Define your supervisor for running a managed session:
+        supervisor = tf.train.MonitoredSession( session_creator=tf.train.ChiefSessionCreator(master=None,checkpoint_dir=train_dir,
+                                                                                             config=config, scaffold=scaffold),
+                                                hooks=[tf.train.StopAtStepHook(last_step=max_step),
+                                                        tf.train.NanTensorHook(loss), saver_hook,
+                                                        _LoggerHook(), summary_hook])
+        
         #Running session:
-        i=0
         with supervisor as sess:
-            ckpt = tf.train.get_checkpoint_state(FLAGS.train_dir)
-            if ckpt and ckpt.model_checkpoint_path:
-                # Restores from checkpoint
-                saver.restore(sess, ckpt.model_checkpoint_path)
-            else:
-                saver.restore(sess, checkpoint_file)
             while not sess.should_stop():
-                if (i+1) % num_steps_per_epoch == 0:
-                    ckpt_eval = tf.train.get_checkpoint_state(FLAGS.train_dir)
-                    evaluate(ckpt_eval.model_checkpoint_path,
-                             dataset_dir,
-                             file_pattern,
-                             file_pattern_for_counting,
-                             labels_to_name,
-                             batch_size,
-                             image_size,
-                            )
-                sess.run(train_op)
+                _ = sess.run_step_fn(step_fn)
+                
+        txt_file.close()
 
 if __name__ == '__main__':
     run()

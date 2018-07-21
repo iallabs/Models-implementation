@@ -98,14 +98,7 @@ def run():
             
         excluding = ['MobilenetV2/Logits/Conv2d_1c_1x1']   
         variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
-        ckpt_state = tf.train.get_checkpoint_state(FLAGS.train_dir)
-        if ckpt_state and ckpt_state.model_checkpoint_path:
-            ckpt = ckpt_state.model_checkpoint_path
-        else:
-            ckpt = checkpoint_file
 
-        #We reconstruct a FCN block on top of our final conv layer.
-        
         end_points['Predictions_1'] = tf.nn.softmax(logits)
 
         #Defining losses and regulization ops:
@@ -156,6 +149,11 @@ def run():
             #Define max steps:
         max_step = num_epochs*num_steps_per_epoch
 
+        ckpt_state = tf.train.get_checkpoint_state(FLAGS.train_dir)
+        if ckpt_state and ckpt_state.model_checkpoint_path:
+            ckpt = ckpt_state.model_checkpoint_path
+        else:
+            ckpt = checkpoint_file
         #Create a saver to load pre-trained model
         if ckpt==checkpoint_file:
             saver = tf.train.Saver(variables_to_restore)

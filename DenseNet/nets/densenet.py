@@ -96,7 +96,7 @@ def densenet(inputs,
       
             net = slim.conv2d(net, number_filters, 7, stride=2, scope='conv1')
             net = slim.batch_norm(net)
-            net = tf.nn.sigmoid(net)
+            net = tf.nn.relu(net)
             net = slim.max_pool2d(net, 3, stride=2, padding='SAME')
 
         # blocks
@@ -120,14 +120,14 @@ def densenet(inputs,
             # final block
             with tf.variable_scope('final_block', [inputs]):
                 net = slim.batch_norm(net)
-                net = tf.nn.sigmoid(net)
+                net = tf.nn.relu(net)
                 net = _global_avg_pool2d(net, scope='global_avg_pool')
             net = slim.conv2d(net, num_classes, 1,
                             biases_initializer=tf.zeros_initializer(),
                             scope='logits')
             end_points = slim.utils.convert_collection_to_dict(end_points_collection)
             if num_classes is not None:
-                end_points['Predictions'] = slim.softmax(net, scope='Predictions')
+                end_points['Predictions'] = slim.sigmoid(net, scope='Predictions')
             return net, end_points
 
 
