@@ -92,7 +92,7 @@ def run():
         decay_steps = int(num_epochs_before_decay * num_steps_per_epoch)
     
         #Create the model inference
-        with slim.arg_scope(mobilenet_v2.training_scope(is_training=True, weight_decay=0.0004, stddev=0.01, dropout_keep_prob=0.999, bn_decay=0.997)):
+        with slim.arg_scope(mobilenet_v2.training_scope(is_training=True, weight_decay=0.001, stddev=0.01, dropout_keep_prob=0.999, bn_decay=0.997)):
             #TODO: Check mobilenet_v1 module, var "excluding
             logits, end_points = mobilenet_v2.mobilenet(images,depth_multiplier=1.4, num_classes = len(labels_to_name), is_training = True)
             
