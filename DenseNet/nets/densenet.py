@@ -127,7 +127,7 @@ def densenet(inputs,
                             scope='logits')
             end_points = slim.utils.convert_collection_to_dict(end_points_collection)
             if num_classes is not None:
-                end_points['Predictions'] = slim.sigmoid(net, scope='Predictions')
+                end_points['Predictions'] = tf.nn.sigmoid(net, name='Predictions')
             return net, end_points
 
 

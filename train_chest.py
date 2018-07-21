@@ -27,7 +27,7 @@ FLAGS = flags.FLAGS
 
 #=======Dataset Informations=======#
 dataset_dir = FLAGS.dataset_dir
-
+train_dir = FLAGS.train_dir
 #Emplacement du checkpoint file
 checkpoint_file= FLAGS.ckpt
 gpu_p = FLAGS.gpu_p
@@ -65,7 +65,7 @@ items_to_descriptions = {
 num_epochs = 60
 
 #State your batch size
-batch_size = 16
+batch_size = 64
 
 #Learning rate information and configuration (Up to you to experiment)
 initial_learning_rate = 0.0001
@@ -84,7 +84,7 @@ def run():
         tf.logging.set_verbosity(tf.logging.INFO) #Set the verbosity to INFO level
 
         dataset = get_dataset("train", dataset_dir, file_pattern=file_pattern, file_pattern_for_counting=file_pattern_for_counting, labels_to_name=labels_to_name)
-        images,_, oh_labels, _ = load_batch_dense(dataset, batch_size, image_size, image_size, is_training=True)
+        images,labels, oh_labels, _ = load_batch_dense(dataset, batch_size, image_size, image_size, is_training=True)
 
         #Calcul of batches/epoch, number of steps after decay learning rate
         num_batches_per_epoch = int(dataset.num_samples / batch_size)
@@ -96,10 +96,9 @@ def run():
             logits, end_points = densenet.densenet121(images, num_classes = len(labels_to_name), is_training = True)
         
         excluding = ['densenet121/logits','densenet121/Predictions']
-        variable_to_restore = slim.get_variables_to_restore(exclude=excluding)
-        end_points['Pred_sig']=tf.nn.sigmoid(logits)
+        variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
         logit = tf.squeeze(logits)
-
+        end_points['Pred_sig']=tf.nn.sigmoid(logit)
         #Defining losses and regulization ops:
         with tf.name_scope("loss_op"):
             loss = tf.losses.sigmoid_cross_entropy(multi_class_labels = oh_labels, logits = logit)
@@ -113,10 +112,6 @@ def run():
                                         decay_steps=decay_steps,
                                         decay_rate = learning_rate_decay_factor,
                                         staircase=True)
-
-        #State the metrics that you want to predict. We get a predictions that is not one_hot_encoded.
-        predictions = tf.argmax(tf.squeeze(end_points['Pred_sig']),axis=1)
-        gt = tf.argmax(oh_labels, axis=1)
         
         #Define Optimizer with decay learning rate:
         with tf.name_scope("optimizer"):
@@ -126,15 +121,17 @@ def run():
         
         #Create all summaries needed for monitoring the training
         with tf.name_scope("metrics"):
-            accuracy = tf.reduce_mean(tf.cast(tf.equal(gt, predictions), tf.float32))
-            predictions = tf.argmax(tf.nn.sigmoid(end_points['Predictions_1']), 1)
-                names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({
-                'Accuracy': tf.metrics.accuracy(labels, predictions),
+            #State the metrics that you want to predict. We get a predictions
+            predictions = tf.argmax(end_points['Pred_sig'],axis=1)
+            gt = tf.argmax(oh_labels, axis=1)
+            names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({
+                'Accuracy': tf.metrics.accuracy(gt, predictions),
                 })
-                for name, value in names_to_values.items():
-                    summary_name = 'train/%s' % name
-                    op = tf.summary.scalar(summary_name, value, collections=[])
-                    tf.add_to_collection(tf.GraphKeys.SUMMARIES, op)
+            for name, value in names_to_values.items():
+                summary_name = 'train/%s' % name
+                op = tf.summary.scalar(summary_name, value, collections=[])
+                tf.add_to_collection(tf.GraphKeys.SUMMARIES, op)
+            accuracy = tf.reduce_mean(tf.cast(tf.equal(gt, predictions), tf.float32))
             tf.summary.scalar('losses/Total_Loss', total_loss)
             tf.summary.scalar('accuracy', accuracy)
             tf.summary.scalar('learning_rate', lr)
@@ -147,8 +144,8 @@ def run():
             ckpt = ckpt_state.model_checkpoint_path
         else:
             ckpt = checkpoint_file
-        if ckpt==checkpoint_file:
             saver = tf.train.Saver(variables_to_restore)
+            
         #Define a restore function wrapped for scaffold
         def restore_wrap(scaffold, sess):
             if ckpt != checkpoint_file:
@@ -158,7 +155,7 @@ def run():
         #Define a step_fn function to run the train step: Special to monitored training session:
         txt_file = open("Output.txt", "w")
         def step_fn(step_context):
-            value, i,a,b,c = step_context.run_with_hooks([train_op, global_step,labels, oh_labels, end_points['Predictions_1']])
+            value, i,a,b,c = step_context.run_with_hooks([train_op, global_step,labels, oh_labels, end_points['Pred_sig']])
             txt_file.write("*****step i***** " + str(i) + "\n" +"labels : "+ str(a) + "\n" + "oh_labels : "+str(b) +\
                             "\n"+"predictions : "+str(c)+"\n")
             return value
@@ -193,7 +190,8 @@ def run():
         config.gpu_options.per_process_gpu_memory_fraction = gpu_p
 
         #Definine checkpoint path for restoring the model
-        
+        max_step = num_epochs*num_steps_per_epoch
+
         scaffold = tf.train.Scaffold(init_fn= restore_wrap, summary_op=my_summary_op)
         saver_hook= tf.train.CheckpointSaverHook(train_dir,save_steps=num_batches_per_epoch//2,scaffold=scaffold)
         summary_hook = tf.train.SummarySaverHook(save_steps=20, output_dir=train_dir, scaffold=scaffold)
@@ -206,6 +204,7 @@ def run():
         
         #Running session:
         with supervisor as sess:
+            print(tf.get_collection(tf.GraphKeys.INIT_OP))
             while not sess.should_stop():
                 _ = sess.run_step_fn(step_fn)
                 
