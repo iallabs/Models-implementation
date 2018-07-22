@@ -1,6 +1,7 @@
 import tensorflow as tf
 slim = tf.contrib.slim
-import research.slim.nets.mobilenet_v1 as mobilenet_v1
+
+import research.slim.nets.mobilenet.mobilenet_v2 as mobilenet_v2
 import research.slim.datasets.imagenet as imagenet
 from tensorflow.python.platform import gfile
 from research.slim.preprocessing import inception_preprocessing
@@ -11,104 +12,38 @@ import os
 import numpy as np
 
 checkpoint_dir = os.getcwd()
-checkpoint_file = checkpoint_dir + "/train_fruit/training/model.ckpt-2316"
+checkpoint_file = checkpoint_dir +"\\ckpt\\model.ckpt-299002"
 
 image_size = 224
-main_dir = "D:/train/train/"
 #Images
-labels_to_name = {0:'Apple Braeburn', 
-                1:'Apple Golden 1',
-                2:'Apple Golden 2', 
-                3:'Apple Golden 3',
-                4: 'Apple Granny Smith',
-                5: 'Apple Red 1',
-                6: 'Apple Red 2',
-                7: 'Apple Red 3',
-                8: 'Apple Red Delicious',
-                9: 'Apple Red Yellow',
-                10: 'Apricot',
-                11: 'Avocado',
-                12: 'Avocado ripe',
-                13: 'Banana',
-                14: 'Banana Red',
-                15: 'Cactus fruit',
-                16: 'Cantaloupe 1',
-                17: 'Cantaloupe 2',
-                18: 'Carambula',
-                19: 'Cherry 1',
-                20: 'Cherry 2',
-                21: 'Cherry Rainier',
-                22: 'Clementine',
-                23: 'Cocos',
-                24: 'Dates',
-                25: 'Granadilla',
-                26: 'Grape Pink',
-                27: 'Grape White',
-                28: 'Grape White 2',
-                29: 'Grapefruit Pink',
-                30: 'Grapefruit White',
-                31: 'Guava',
-                32: 'Huckleberry',
-                33: 'Kaki',
-                34: 'Kiwi',
-                35: 'Kumquats',
-                36: 'Lemon',
-                37: 'Lemon Meyer',
-                38: 'Limes',
-                39: 'Litchi',
-                40: 'Mandarine',
-                41: 'Mango',
-                42: 'Maracuja',
-                43: 'Melon Piel de Sapo',
-                44: 'Nectarine',
-                45: 'Orange',
-                46: 'Papaya',
-                47: 'Passion Fruit',
-                48: 'Peach',
-                49: 'Peach Flat',
-                50: 'Pear',
-                51: 'Pear Abate',
-                52: 'Pear Monster',
-                53: 'Pear Williams',
-                54 : 'Pepino',
-                55: 'Pineapple',
-                56: 'Pitahaya Red',
-                57: 'Plum',
-                58: 'Pomegranate',
-                59: 'Quince',
-                60: 'Raspberry',
-                61: 'Salak',
-                62: 'Strawberry',
-                63: 'Tamarillo',
-                64: 'Tangelo'
+labels_to_name = {0:'negative', 
+                1:'positive'
                 }
 
 tf.logging.set_verbosity(tf.logging.INFO)
 
 
-sample_images = ["D:/ChestXray-14/images/00000001_000.png","D:/fruits/fruits-360/Training/"+labels_to_name[0]+"/0_100.jpg",
-                  "C:/Users/Lenovo/Documents/testset/kaki-2.jpg"]
+sample_images = ["C:/Users/Lenovo/Documents/MURA-v1.1/MURA-v1.1/valid/XR_FOREARM/patient11215/study1_negative/image1.png"]
 file_input = tf.placeholder(tf.string, ())
-image = tf.image.decode_jpeg(tf.read_file(file_input), channels=3)
-
-image_a = inception_preprocessing.preprocess_image(image, 224,224, is_training=False)
-
-"""images = dp.preprocess_image(image, 224, 224, is_training=False)"""
+image = tf.image.decode_image(tf.read_file(file_input), channels=3)
+image.set_shape([None,None,3])
+image_a = dp.preprocess_image(image, 224,224, is_training=False)
+print(image_a)
 images_bis = tf.expand_dims(image_a,0)
-with slim.arg_scope(mobilenet_v1.mobilenet_v1_arg_scope(is_training=False)):
-  logits, endpoints = mobilenet_v1.mobilenet_v1_050(images_bis, num_classes=len(labels_to_name), is_training=False)
+logits, endpoints = mobilenet_v2.mobilenet(images_bis,depth_multiplier=1.4, num_classes = len(labels_to_name), is_training = False)
 
-endpoints['Predictions'] = tf.nn.sigmoid(logits)
-
-
-with tf.Session() as sess:
-  vars = slim.get_variables_to_restore()
-  saver = tf.train.Saver(vars)
+endpoints['Predictions'] = tf.nn.softmax(logits)
+graph= tf.get_default_graph()
+txt_file = open("Output.txt", "w")
+with tf.Session(graph=graph) as sess:
+  variables = slim.get_variables_to_restore()
+  saver = tf.train.Saver(variables)
   saver.restore(sess,  checkpoint_file)
-  
-  print(image_a.eval(feed_dict={file_input: sample_images[2]}))
-
-  x = endpoints['Predictions'].eval(feed_dict={file_input: sample_images[2]})
-
+  a = image_a.eval(feed_dict={file_input: sample_images[0]})
+  for i in a:
+    txt_file.write(str(i))
+  x = endpoints['Predictions'].eval(feed_dict={file_input: sample_images[0]})
+  print(x)
   print("Prediction class:", labels_to_name[x.argmax()])
   print("Prediction value", x.max())
+txt_file.close()

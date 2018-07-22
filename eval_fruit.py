@@ -14,15 +14,15 @@ slim = tf.contrib.slim
 
 
 #=======Dataset Informations=======#
-dataset_dir = "D:/MURA-v1.1"
+dataset_dir = "C:/Users/Lenovo/Documents/MURA-v1.1"
 main_dir = os.getcwd()
-log_dir= main_dir + "\\train_fruit\\log_eval"
+log_dir= main_dir + "\\train\\log_eval"
 file_pattern = "MURA_%s_*.tfrecord"
 file_pattern_for_counting = "MURA"
 batch_size = 8
 image_size = 224
 labels_to_name= {0:"negative", 1:"positive"}
-train_dir = main_dir+"\\train_fruit\\training"
+train_dir = main_dir+"\\ckpt"
 #=======Training Informations======#
 #Nombre d'époques pour l'entraînement
 def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counting, labels_to_name, batch_size, image_size):
@@ -46,14 +46,14 @@ def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counti
 
 
         #Create the model inference
-
+        with slim.arg_scope(mobilenet_v2.training_scope(is_training=False)):
             #TODO: Check mobilenet_v1 module, var "excluding
-        logits, end_points = mobilenet_v2.mobilenet(images,depth_multiplier=1.4, num_classes = len(labels_to_name), is_training = False)
-        end_points['Predictions_1'] = tf.nn.softmax(logits, name="sigmoid")
+            logits, end_points = mobilenet_v2.mobilenet(images,depth_multiplier=1.4, num_classes = len(labels_to_name), is_training = False)
+        end_points['Predictions_1'] = tf.nn.softmax(logits)
         variables_to_restore = slim.get_variables_to_restore()
         
         #Defining accuracy and predictions:
-        loss = tf.losses.loss = tf.losses.softmax_cross_entropy(onehot_labels = oh_labels, logits = logits)
+        loss = tf.losses.softmax_cross_entropy(onehot_labels = oh_labels, logits = logits)
         total_loss = tf.reduce_mean(tf.losses.get_total_loss())
         predictions = tf.argmax(end_points['Predictions_1'], 1)
         probabilities = end_points['Predictions_1']
@@ -81,7 +81,6 @@ def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counti
             variables_to_restore = variables_to_restore,
             summary_op=summary_op_val)
 
-print(train_dir)
 ckpt_eval = tf.train.get_checkpoint_state(train_dir).model_checkpoint_path
 
 evaluate(ckpt_eval, dataset_dir, file_pattern, file_pattern_for_counting, labels_to_name, batch_size, image_size)

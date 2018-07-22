@@ -6,14 +6,14 @@ import tensorflow as tf
 
 slim = tf.contrib.slim
 #ImageNet RGB mean values (moyenne)
-_R_MEAN = 0.485
-_G_MEAN = 0.457
-_B_MEAN = 0.408
+_R_MEAN = 123.675/255.
+_G_MEAN = 116.535/255.
+_B_MEAN = 104.04/255.
 
 #ImageNet standard deviation (écart-type)
-_R_STD = 0.229
-_G_STD = 0.224
-_B_STD = 0.225
+_R_STD = 58.395/255.
+_G_STD = 57.12/255.
+_B_STD = 57.375/255.
 
 _RESIZE_SIDE_MIN = 256
 _RESIZE_SIDE_MAX = 512
@@ -196,10 +196,10 @@ def _mean_image_subtraction(image, means,stds):
     if len(means) != num_channels:
         raise ValueError('len(means) must match the number of channels')
     channels = tf.split(axis=2, num_or_size_splits=num_channels, value=image)
-    
+    print(channels)
     for i in range(num_channels):
 
-        channels[i] = (means[i]-channels[i])/stds[i]
+        channels[i] = tf.subtract(channels[i], means[i]/255.)/(stds[i]/255.)
 
     return tf.concat(axis=2, values=channels)
 

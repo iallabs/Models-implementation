@@ -78,6 +78,7 @@ def run():
     #===================================================================== Training ===========================================================================#
     #Adding the graph:
     tf.logging.set_verbosity(tf.logging.INFO) #Set the verbosity to INFO level
+    tf.reset_default_graph()
 
     with tf.name_scope("dataset"):
         dataset= get_dataset("train", dataset_dir, file_pattern=file_pattern,
@@ -154,15 +155,15 @@ def run():
         ckpt = ckpt_state.model_checkpoint_path
     else:
         ckpt = checkpoint_file
+        saver_b = tf.train.Saver(variables_to_restore)
     #Create a saver to load pre-trained model
-    if ckpt==checkpoint_file:
-        saver = tf.train.Saver(variables_to_restore)
+        
     #Define a restore function wrapped for scaffold
     def restore_wrap(scaffold, sess):
         if ckpt != checkpoint_file:
             scaffold.saver.restore(sess, ckpt)
         else:
-            saver.restore(sess, ckpt)
+            saver_b.restore(sess, ckpt)
     #Define a step_fn function to run the train step: Special to monitored training session:
     txt_file = open("Output.txt", "w")
     def step_fn(step_context):
@@ -202,7 +203,7 @@ def run():
 
     #Definine checkpoint path for restoring the model
     
-    scaffold = tf.train.Scaffold(init_fn= restore_wrap, summary_op=my_summary_op)
+    scaffold = tf.train.Scaffold(init_fn= restore_wrap,ready_op=None, summary_op=my_summary_op)
     saver_hook= tf.train.CheckpointSaverHook(train_dir,save_steps=num_batches_per_epoch//2,scaffold=scaffold)
     summary_hook = tf.train.SummarySaverHook(save_steps=20, output_dir=train_dir, scaffold=scaffold)
     #Define your supervisor for running a managed session:
@@ -211,7 +212,6 @@ def run():
                                             hooks=[tf.train.StopAtStepHook(last_step=max_step),
                                                     tf.train.NanTensorHook(loss), saver_hook,
                                                     _LoggerHook(), summary_hook])
-    
     #Running session:
     with supervisor as sess:
         while not sess.should_stop():
