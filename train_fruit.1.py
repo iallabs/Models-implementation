@@ -82,7 +82,7 @@ def run():
     #Adding the graph:
     tf.logging.set_verbosity(tf.logging.INFO) #Set the verbosity to INFO level
     tf.reset_default_graph()
-    with tf.Graph().as_default():
+    with tf.Graph().as_default() as graph:
         with tf.name_scope("dataset"):
             dataset= get_dataset("train", dataset_dir, file_pattern=file_pattern,
                                     file_pattern_for_counting=file_pattern_for_counting, labels_to_name=labels_to_name)
@@ -145,79 +145,50 @@ def run():
             tf.summary.scalar('global_step', global_step)
             tf.summary.histogram('images',images)
             tf.summary.histogram('proba_perso',end_points['Predictions_1'])        
-
-
             #Create the train_op#.
         with tf.name_scope("merge_summary"):       
             my_summary_op = tf.summary.merge_all()
             #Define max steps:
         max_step = num_epochs*num_steps_per_epoch
-
-        ckpt_state = tf.train.get_checkpoint_state(FLAGS.train_dir)
+        #NOTE: We define in this section the properties of the session to run (saver, summaries)
+        ckpt_state = tf.train.get_checkpoint_state(train_dir)
         if ckpt_state and ckpt_state.model_checkpoint_path:
             ckpt = ckpt_state.model_checkpoint_path
+            saver_b = tf.train.Saver(max_to_keep=None)
         else:
             ckpt = checkpoint_file
-            saver_b = tf.train.Saver(variables_to_restore)
-        #Create a saver to load pre-trained model
-            
-        #Define a restore function wrapped for scaffold
-        def restore_wrap(scaffold, sess):
-            if ckpt != checkpoint_file:
-                scaffold.saver.restore(sess, ckpt)
-            else:
-                saver_b.restore(sess, ckpt)
-        #Define a step_fn function to run the train step: Special to monitored training session:
+            saver_b = tf.train.Saver(variables_to_restore, max_to_keep=None)
+        #Define a txt file to write inference results:
         txt_file = open("Output.txt", "w")
-        def step_fn(step_context):
-            value, i,a,b,c = step_context.run_with_hooks([train_op, global_step,labels, oh_labels, end_points['Predictions_1']])
-            txt_file.write("*****step i***** " + str(i) + "\n" +"labels : "+ str(a) + "\n" + "oh_labels : "+str(b) +\
-                            "\n"+"predictions : "+str(c)+"\n")
-            return value
-        #Create a class Hook for your training. Handles the prints and ops to run
-        class _LoggerHook(tf.train.SessionRunHook):
-
-            def begin(self):
-                self.step = 0
-                self.totalloss=0.0
-                self.totalacc=0.0
-
-            def before_run(self, run_context):
-                self._start_time = time.time()
-                return tf.train.SessionRunArgs([global_step,total_loss, accuracy, names_to_updates])  # Asks for loss value.
-
-            def after_run(self, run_context, run_values):
-                duration = time.time() - self._start_time
-                self.step,loss_value, accuracy_value, update = run_values.results
-                num_examples_per_step = batch_size
-                examples_per_sec = num_examples_per_step / duration
-                sec_per_batch = float(duration)
-                self.totalloss += loss_value
-                self.totalacc += accuracy_value
-                format_str = ('\r%s: step %d,  avg_loss=%.3f, loss = %.2f, avg_auc=%.2f, accuracy=%.2f (%.1f examples/sec; %.3f '
-                    'sec/batch)')
-                sys.stdout.write(format_str % (datetime.time(), self.step+1, self.totalloss/(self.step+1), loss_value, 
-                                self.totalacc/(self.step+1), accuracy_value, examples_per_sec, sec_per_batch))
-
+        #Define a Summary Writer:
+        summy_writer = tf.summary.FileWriter(logdir=summary_dir, graph=graph)
         #deFINE A ConfigProto to allow gpu device
         config = tf.ConfigProto()
         config.log_device_placement = False
         config.gpu_options.per_process_gpu_memory_fraction = gpu_p
-
+        #Define a coordinator for running the queues
+        coord = tf.train.Coordinator()
         #Definine checkpoint path for restoring the model
-        
-        scaffold = tf.train.Scaffold(init_fn= restore_wrap,ready_op=None, summary_op=my_summary_op, saver=tf.train.Saver(max_to_keep=None))
-        saver_hook= tf.train.CheckpointSaverHook(train_dir,save_steps=num_batches_per_epoch//2,scaffold=scaffold)
-        summary_hook = tf.train.SummarySaverHook(save_steps=20, output_dir=summary_dir, scaffold=scaffold)
-        #Define your supervisor for running a managed session:
-        supervisor = tf.train.MonitoredSession( session_creator=tf.train.ChiefSessionCreator(scaffold=scaffold,master='',config=config,checkpoint_dir=train_dir),
-                                                hooks=[tf.train.StopAtStepHook(last_step=max_step),
-                                                        tf.train.NanTensorHook(loss), saver_hook,
-                                                        _LoggerHook(), summary_hook])
-        #Running session:
-        while not supervisor.should_stop():
-            _ = supervisor.run_step_fn(step_fn)
-        supervisor.close()      
+        totalloss=0.0
+        totalacc=0.0
+        i = 1
+
+        with tf.Session(graph=graph) as sess:
+            sess.run([tf.global_variables_initializer(),tf.local_variables_initializer()])
+            tf.train.start_queue_runners(sess, coord)
+            saver_b.restore(sess,ckpt)
+            saver_b.save(sess,train_dir, global_step=i)
+            while i!= max_step:
+                _, tmp_loss, tmp_update= sess.run([train_op,total_loss, names_to_updates])
+                totalloss +=tmp_loss
+                format_str = ('\r%s: step %d,  avg_loss=%.3f, loss = %.2f, streaming_acc=%.2f')
+                sys.stdout.write(format_str % (datetime.time(), i, totalloss/i, tmp_loss, tmp_update['Accuracy']))
+                if i%20 == 0:
+                    merge = sess.run(my_summary_op)
+                    summy_writer.add_summary(merge,i)
+                if i%num_batches_per_epoch==0:
+                    saver_b.save(sess,train_dir, global_step=i)
+                i += 1
         txt_file.close()
 if __name__ == '__main__':
     run()
