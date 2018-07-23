@@ -26,12 +26,11 @@ FLAGS = flags.FLAGS
 #=======Dataset Informations=======#
 dataset_dir = FLAGS.dataset_dir
 train_dir = FLAGS.train_dir
-summary_dir = train_dir + '/'+ "summary"
-
 gpu_p = FLAGS.gpu_p
 #Emplacement du checkpoint file
 checkpoint_file= FLAGS.ckpt
-
+summary_dir = train_dir + "/summary"
+ckpt_dir = train_dir + "/ckpt"
 image_size = 224
 #Nombre de classes à prédire
 file_pattern = "MURA_%s_*.tfrecord"
@@ -78,9 +77,12 @@ def run():
         os.mkdir(os.getcwd()+'/'+train_dir)
     if not os.path.exists(summary_dir):
         os.mkdir(os.getcwd()+'/'+summary_dir)
+    if not os.path.exists(ckpt_dir):
+        os.mkdir(os.getcwd()+'/'+ckpt_dir)
     #===================================================================== Training ===========================================================================#
     #Adding the graph:
-    tf.logging.set_verbosity(tf.logging.INFO) #Set the verbosity to INFO level
+    tf.logging.set_verbosity(tf.logging.INFO) 
+    #Set the verbosity to INFO level
     tf.reset_default_graph()
     with tf.Graph().as_default():
         with tf.name_scope("dataset"):
@@ -99,7 +101,6 @@ def run():
         with slim.arg_scope(mobilenet_v2.training_scope(is_training=True, weight_decay=0.001, stddev=0.01, dropout_keep_prob=0.999, bn_decay=0.997)):
             #TODO: Check mobilenet_v1 module, var "excluding
             logits, end_points = mobilenet_v2.mobilenet(images,depth_multiplier=1.4, num_classes = len(labels_to_name), is_training = True)
-            
         excluding = ['MobilenetV2/Logits/Conv2d_1c_1x1']   
         variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
 
@@ -156,6 +157,7 @@ def run():
         ckpt_state = tf.train.get_checkpoint_state(FLAGS.train_dir)
         if ckpt_state and ckpt_state.model_checkpoint_path:
             ckpt = ckpt_state.model_checkpoint_path
+            saver_b = tf.train.Saver()
         else:
             ckpt = checkpoint_file
             saver_b = tf.train.Saver(variables_to_restore)
@@ -164,7 +166,7 @@ def run():
         #Define a restore function wrapped for scaffold
         def restore_wrap(scaffold, sess):
             if ckpt != checkpoint_file:
-                scaffold.saver.restore(sess, ckpt)
+                saver_b.restore(sess, ckpt)
             else:
                 saver_b.restore(sess, ckpt)
         #Define a step_fn function to run the train step: Special to monitored training session:
@@ -201,23 +203,25 @@ def run():
 
         #deFINE A ConfigProto to allow gpu device
         config = tf.ConfigProto()
-        config.log_device_placement = False
+        config.log_device_placement = True
         config.gpu_options.per_process_gpu_memory_fraction = gpu_p
-
+        config.gpu_options.allow_growth = True
         #Definine checkpoint path for restoring the model
         
-        scaffold = tf.train.Scaffold(init_fn= restore_wrap,ready_op=None, summary_op=my_summary_op, saver=tf.train.Saver(max_to_keep=None))
-        saver_hook= tf.train.CheckpointSaverHook(train_dir,save_steps=num_batches_per_epoch//2,scaffold=scaffold)
-        summary_hook = tf.train.SummarySaverHook(save_steps=20, output_dir=summary_dir, scaffold=scaffold)
-        #Define your supervisor for running a managed session:
-        supervisor = tf.train.MonitoredSession( session_creator=tf.train.ChiefSessionCreator(scaffold=scaffold,master='',config=config,checkpoint_dir=train_dir),
+        scaffold = tf.train.Scaffold(saver=tf.train.Saver(max_to_keep=None), init_fn= restore_wrap, summary_op=my_summary_op)
+        saver_hook= tf.train.CheckpointSaverHook(ckpt_dir,save_steps=num_batches_per_epoch//2,scaffold=scaffold)
+        summary_hook = tf.train.SummarySaverHook(save_steps=100, output_dir=summary_dir, scaffold=scaffold)
+        server = tf.train.Server.create_local_server()
+        supervisor = tf.train.MonitoredSession(session_creator=tf.train.ChiefSessionCreator(master=server.target,
+                                                                                            config=config, scaffold=scaffold),
                                                 hooks=[tf.train.StopAtStepHook(last_step=max_step),
                                                         tf.train.NanTensorHook(loss), saver_hook,
                                                         _LoggerHook(), summary_hook])
         #Running session:
-        while not supervisor.should_stop():
-            _ = supervisor.run_step_fn(step_fn)
-        supervisor.close()      
+        with supervisor as sess:
+            while not sess.should_stop():
+                _ = sess.run_step_fn(step_fn)
+                
         txt_file.close()
 if __name__ == '__main__':
     run()
