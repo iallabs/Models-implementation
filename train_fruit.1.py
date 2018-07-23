@@ -96,11 +96,11 @@ def run():
         decay_steps = int(num_epochs_before_decay * num_steps_per_epoch)
 
         #Create the model inference
-        with slim.arg_scope(mobilenet_v2.training_scope(is_training=True, weight_decay=0.001, stddev=0.01, dropout_keep_prob=0.999, bn_decay=0.997)):
+        with slim.arg_scope(mobilenet_v2.training_scope(is_training=True, weight_decay=0.001, stddev=0.01, dropout_keep_prob=0.5, bn_decay=0.997)):
             #TODO: Check mobilenet_v1 module, var "excluding
             logits, end_points = mobilenet_v2.mobilenet(images,depth_multiplier=1.4, num_classes = len(labels_to_name), is_training = True)
             
-        excluding = ['MobilenetV2/Logits/Conv2d_1c_1x1']   
+        excluding = ['MobilenetV2/Logits']   
         variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
 
         end_points['Predictions_1'] = tf.nn.softmax(logits)
@@ -178,18 +178,20 @@ def run():
             sess.run([tf.global_variables_initializer(),tf.local_variables_initializer()])
             tf.train.start_queue_runners(sess, coord)
             saver_b.restore(sess,ckpt)
-            saver_a.save(sess,train_dir, global_step=i)
+            saver_a.save(sess,train_dir+"\\model", global_step=i,latest_filename="checkpoint")
             while i!= max_step:
                 sess.run(train_op)
-                tmp_loss, tmp_update= sess.run([total_loss, names_to_updates])
+                a,b,c,tmp_loss, tmp_update= sess.run([labels,oh_labels,end_points['Predictions_1'],total_loss, names_to_updates])
+                txt_file.write("*****step i***** " + str(i) + "\n" +"labels : "+ str(a) + "\n" + "oh_labels : "+str(b) +\
+                            "\n"+"predictions : "+str(c)+"\n")
                 totalloss +=tmp_loss
                 format_str = ('\r%s: step %d,  avg_loss=%.3f, loss = %.2f, streaming_acc=%.2f')
                 sys.stdout.write(format_str % (datetime.time(), i, totalloss/i, tmp_loss, tmp_update['Accuracy']))
-                if i%20 == 0:
+                if i%100 == 1:
                     merge = sess.run(my_summary_op)
                     summy_writer.add_summary(merge,i)
                 if i%num_batches_per_epoch==0:
-                    saver_a.save(sess,train_dir, global_step=i)
+                    saver_a.save(sess,train_dir, global_step=i,latest_filename="checkpoint")
                 i += 1
         txt_file.close()
 if __name__ == '__main__':
