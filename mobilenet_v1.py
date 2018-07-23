@@ -12,7 +12,7 @@ import os
 import numpy as np
 
 checkpoint_dir = os.getcwd()
-checkpoint_file = checkpoint_dir +"\\ckpt\\model.ckpt-299002"
+checkpoint_file = checkpoint_dir +"\\train\\training\\ckpt\\model.ckpt-2301"
 
 image_size = 224
 #Images

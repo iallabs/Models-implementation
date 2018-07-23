@@ -154,10 +154,11 @@ def run():
         ckpt_state = tf.train.get_checkpoint_state(train_dir)
         if ckpt_state and ckpt_state.model_checkpoint_path:
             ckpt = ckpt_state.model_checkpoint_path
-            saver_b = tf.train.Saver(max_to_keep=None)
+            saver_b = tf.train.Saver()
         else:
             ckpt = checkpoint_file
-            saver_b = tf.train.Saver(variables_to_restore, max_to_keep=None)
+            saver_b = tf.train.Saver(variables_to_restore)
+        saver_a = tf.train.Saver(max_to_keep=None)
         #Define a txt file to write inference results:
         txt_file = open("Output.txt", "w")
         #Define a Summary Writer:
@@ -177,9 +178,10 @@ def run():
             sess.run([tf.global_variables_initializer(),tf.local_variables_initializer()])
             tf.train.start_queue_runners(sess, coord)
             saver_b.restore(sess,ckpt)
-            saver_b.save(sess,train_dir, global_step=i)
+            saver_a.save(sess,train_dir, global_step=i)
             while i!= max_step:
-                _, tmp_loss, tmp_update= sess.run([train_op,total_loss, names_to_updates])
+                sess.run(train_op)
+                tmp_loss, tmp_update= sess.run([total_loss, names_to_updates])
                 totalloss +=tmp_loss
                 format_str = ('\r%s: step %d,  avg_loss=%.3f, loss = %.2f, streaming_acc=%.2f')
                 sys.stdout.write(format_str % (datetime.time(), i, totalloss/i, tmp_loss, tmp_update['Accuracy']))
@@ -187,7 +189,7 @@ def run():
                     merge = sess.run(my_summary_op)
                     summy_writer.add_summary(merge,i)
                 if i%num_batches_per_epoch==0:
-                    saver_b.save(sess,train_dir, global_step=i)
+                    saver_a.save(sess,train_dir, global_step=i)
                 i += 1
         txt_file.close()
 if __name__ == '__main__':
