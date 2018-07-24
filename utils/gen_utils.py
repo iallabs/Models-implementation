@@ -34,15 +34,17 @@ def get_dataset(phase_name, dataset_dir, file_pattern, file_pattern_for_counting
     #Create the keys_to_features dictionary for the decoder    
     feature = {
         'image/encoded':tf.FixedLenFeature((), tf.string, default_value=''),
+        'image/filename':tf.FixedLenFeature((), tf.string, default_value=''),
         'image/height': tf.FixedLenFeature((), tf.int64),
         'image/width': tf.FixedLenFeature((), tf.int64),
-        'image/format': tf.FixedLenFeature((), tf.string, default_value='jpg'),
+        'image/format': tf.FixedLenFeature((), tf.string, default_value='png'),
         'image/class/label':tf.FixedLenFeature((), tf.int64),
     }
 
     #Create the items_to_handlers dictionary for the decoder.
     items_to_handlers = {
         'image': slim.tfexample_decoder.Image(),
+        'filename':slim.tfexample_decoder.Tensor('image/filename'),
         'height':slim.tfexample_decoder.Tensor('image/height'),
         'width': slim.tfexample_decoder.Tensor('image/width'),
         'label': slim.tfexample_decoder.Tensor('image/class/label'),
@@ -58,7 +60,6 @@ def get_dataset(phase_name, dataset_dir, file_pattern, file_pattern_for_counting
         data_sources = file_pattern_path,
         decoder = decoder,
         reader = reader,
-        num_readers = 8,
         num_samples = num_samples,
         num_classes = num_class,
         labels_to_name = labels_map,
@@ -81,7 +82,7 @@ def load_batch(dataset, batch_size, height, width, num_epochs, is_training=True,
         shuffle=shuffle,
     )
 
-    raw_image, true_height, true_width, label = provider.get(['image','height','width','label'])
+    raw_image,img_name, true_height, true_width, label = provider.get(['image','filename','height','width','label'])
     raw_image = tf.image.convert_image_dtype(raw_image, dtype=tf.float32)  #Preprocessing using inception_preprocessing:
     #Invert true_height and true_width to tf.int32 required by preprocess_image
     image = inception_preprocessing.preprocess_image(raw_image, height, width, is_training)
@@ -111,7 +112,7 @@ def load_batch(dataset, batch_size, height, width, num_epochs, is_training=True,
             capacity = 50*batch_size,
             allow_smaller_final_batch = True)
 
-    return images, raw_images, one_hot_labels, labels
+    return images, img_name,raw_images, one_hot_labels, labels
 
 def load_batch_dense(dataset, batch_size, height, width, num_epochs=None, is_training=True, shuffle=True):
 
@@ -125,10 +126,9 @@ def load_batch_dense(dataset, batch_size, height, width, num_epochs=None, is_tra
     provider = slim.dataset_data_provider.DatasetDataProvider(
         dataset,
         num_epochs=num_epochs,
-        num_readers=8,
     )
 
-    raw_image, true_height, true_width, label = provider.get(['image','height','width','label'])
+    raw_image, img_name, true_height, true_width, label = provider.get(['image','filename','height','width','label'])
     raw_image = tf.image.convert_image_dtype(raw_image, dtype=tf.float32)
     #Preprocessing using inception_preprocessing:
    
@@ -147,8 +147,7 @@ def load_batch_dense(dataset, batch_size, height, width, num_epochs=None, is_tra
     images, raw_images, one_hot_labels, labels = tf.train.batch(
         [image, raw_image, one_hot_labels, label],
         batch_size = batch_size,
-        num_threads = 8,
         capacity = batch_size,
         allow_smaller_final_batch = True)
 
-    return images, raw_images, one_hot_labels, labels
+    return images,img_name, raw_images, one_hot_labels, labels
