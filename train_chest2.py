@@ -103,7 +103,7 @@ def run():
 
         #Defining losses and regulization ops:
         with tf.name_scope("loss_op"):
-            loss = tf.losses.softmax_cross_entropy(onehot_labels = oh_labels, logits = logits)
+            loss = tf.losses.sigmoid_cross_entropy(onehot_labels = oh_labels, logits = logits)
         
             total_loss = tf.losses.get_total_loss()#obtain the regularization losses as well
         

@@ -14,7 +14,7 @@ slim = tf.contrib.slim
 
 
 #=======Dataset Informations=======#
-dataset_dir = "C:/Users/Lenovo/Documents/MURA-v1.1"
+dataset_dir = "D:/MURA-v1.1"
 main_dir = os.getcwd()
 log_dir= main_dir + "\\train\\log_eval"
 file_pattern = "MURA_%s_*.tfrecord"
@@ -22,23 +22,24 @@ file_pattern_for_counting = "MURA"
 batch_size = 8
 image_size = 224
 labels_to_name= {0:"negative", 1:"positive"}
-train_dir = main_dir+"\\ckpt"
+train_dir = main_dir+"\\train\\training"
 #=======Training Informations======#
 #Nombre d'époques pour l'entraînement
 def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counting, labels_to_name, batch_size, image_size):
-    if not os.path.exists(train_dir):
-        os.mkdir(train_dir)
+    if not os.path.exists(log_dir):
+        os.mkdir(log_dir)
     #Create log_dir:
     with tf.Graph().as_default():
     #=========== Evaluate ===========#
         # Adding the graph:
+        tf.logging.set_verbosity(tf.logging.INFO)
         global_step = tf.train.get_or_create_global_step()
         global_step = tf.assign(global_step, global_step+1)
         dataset= get_dataset("validation", dataset_dir, file_pattern=file_pattern,
                              file_pattern_for_counting=file_pattern_for_counting, labels_to_name=labels_to_name)
 
         #load_batch_dense is special to densenet or nets that require the same preprocessing
-        images,_, oh_labels, labels = load_batch_dense(dataset, batch_size, image_size, image_size,
+        images,_,_, oh_labels, labels = load_batch_dense(dataset, batch_size, image_size, image_size,
                                                          is_training=False, shuffle=False)
 
         #Calcul of batches/epoch, number of steps after decay learning rate
@@ -48,7 +49,7 @@ def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counti
         #Create the model inference
         with slim.arg_scope(mobilenet_v2.training_scope(is_training=False)):
             #TODO: Check mobilenet_v1 module, var "excluding
-            logits, end_points = mobilenet_v2.mobilenet(images,depth_multiplier=1.4, num_classes = len(labels_to_name), is_training = False)
+            logits, end_points = mobilenet_v2.mobilenet(images,depth_multiplier=1.4, num_classes = len(labels_to_name))
         end_points['Predictions_1'] = tf.nn.softmax(logits)
         variables_to_restore = slim.get_variables_to_restore()
         

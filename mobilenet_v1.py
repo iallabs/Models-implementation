@@ -12,7 +12,7 @@ import os
 import numpy as np
 
 checkpoint_dir = os.getcwd()
-checkpoint_file = "C:\\Users\\User12\\Documents\\ckpt-2407\\train-165600"
+checkpoint_file = os.getcwd()+"\\train\\training\\model-16100"
 
 image_size = 224
 #Images
@@ -23,7 +23,7 @@ labels_to_name = {0:'negative',
 tf.logging.set_verbosity(tf.logging.INFO)
 
 
-sample_images = ["D:/MURA-v1.1/MURA-v1.1/valid/XR_HUMERUS/patient11200/study1_negative/image1.png"]
+sample_images = ["D:/MURA-v1.1/MURA-v1.1/valid/XR_SHOULDER/patient11259/study1_negative/image1.png"]
 file_input = tf.placeholder(tf.string, ())
 image = tf.image.decode_png(tf.read_file(file_input), channels=3)
 image = tf.image.convert_image_dtype(image, tf.float32)

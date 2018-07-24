@@ -92,8 +92,8 @@ def _convert_dataset(split_name, grouped, class_names_to_ids, dataset_dir, tfrec
 
     assert split_name in ['train', 'validation']
     num_per_shard = int(math.ceil(len(grouped) / float(_NUM_SHARDS)))
-    #path_img = os.path.join(dataset_dir, 'images'): To use if images are located in one folder named images
-    path_img = dataset_dir #To use on MURA Like datasets (train and validation img folders, put the csv file on main direction)
+    path_img = os.path.join(dataset_dir, 'images')#: To use if images are located in one folder named images
+    #path_img = dataset_dir #To use on MURA Like datasets (train and validation img folders, put the csv file on main direction)
     with tf.Graph().as_default():
         image_reader = ImageReader()
 
@@ -114,13 +114,13 @@ def _convert_dataset(split_name, grouped, class_names_to_ids, dataset_dir, tfrec
                         row = grouped.iloc[i]
                         image_data = tf.gfile.FastGFile(os.path.join(path_img, row[0]), 'rb').read()
                         height, width = image_reader.read_image_dims(sess, image_data)
-                        """#Special to ChestX Dataset: we only focus on the first anomaly(see Data_Entry_csv)
+                        #Special to ChestX Dataset: we only focus on the first anomaly(see Data_Entry_csv)
                         if '|' in row['Finding Labels']:
                             class_name = row['Finding Labels'].split('|')[0]
                         else: 
-                            class_name = row['Finding Labels']"""
+                            class_name = row['Finding Labels']
                         #MURA dataset extracting labels
-                        class_name = row[0].split('/')[-2].split('_')[-1]
+                        """class_name = row[0].split('/')[-2].split('_')[-1]"""
                         class_id = class_names_to_ids[class_name]
                         example = image_to_tfexample(image_data, row[0].encode(), 'png'.encode(),
                                                     height, width, class_id)
