@@ -49,9 +49,9 @@ num_epochs = 100
 #State your batch size
 batch_size = 16
 #Learning rate information and configuration (Up to you to experiment)
-initial_learning_rate = 1e-4
+initial_learning_rate = 6e-3
 learning_rate_decay_factor = 0.95
-num_epochs_before_decay = 0.5
+num_epochs_before_decay = 1
 
 def run():
     #Create log_dir:
@@ -61,7 +61,7 @@ def run():
         os.mkdir(os.getcwd()+'/'+summary_dir)
     #===================================================================== Training ===========================================================================#
     #Adding the graph:
-    tf.logging.set_verbosity(tf.logging.INFO) #Set the verbosity to INFO level
+    #Set the verbosity to INFO level
     tf.reset_default_graph()
     with tf.Graph().as_default() as graph:
         with tf.name_scope("dataset"):
@@ -77,7 +77,7 @@ def run():
         decay_steps = int(num_epochs_before_decay * num_steps_per_epoch)
 
         #Create the model inference
-        with slim.arg_scope(mobilenet_v2.training_scope(is_training=True, weight_decay=0.0001, stddev=0.01, dropout_keep_prob=0.5, bn_decay=0.997)):
+        with slim.arg_scope(mobilenet_v2.training_scope(is_training=True, weight_decay=0.0005, stddev=0.01, dropout_keep_prob=0.5, bn_decay=0.997)):
             #TODO: Check mobilenet_v1 module, var "excluding
             logits, end_points = mobilenet_v2.mobilenet(images,depth_multiplier=1.4, num_classes = len(labels_to_name))
             
