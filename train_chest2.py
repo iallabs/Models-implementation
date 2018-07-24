@@ -97,7 +97,7 @@ def run():
             
         excluding = ['densenet121/final_block', 'densenet121/logits','densenet121/Predictions']   
         variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
-
+        logits = tf.squeeze(logits)
         end_points['Predictions_1'] = tf.nn.sigmoid(logits)
 
         #Defining losses and regulization ops:
