@@ -144,10 +144,10 @@ def load_batch_dense(dataset, batch_size, height, width, num_epochs=None, is_tra
 
     #Batch up the image by enqueing the tensors internally in a FIFO queue and dequeueing many elements with tf.train.batch.
 
-    images, raw_images, one_hot_labels, labels = tf.train.batch(
-        [image, raw_image, one_hot_labels, label],
+    images,img_names, raw_images, one_hot_labels, labels = tf.train.batch(
+        [image, img_name,raw_image, one_hot_labels, label],
         batch_size = batch_size,
         capacity = batch_size,
         allow_smaller_final_batch = True)
 
-    return images,img_name, raw_images, one_hot_labels, labels
+    return images,img_names, raw_images, one_hot_labels, labels
