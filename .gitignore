@@ -128,3 +128,6 @@ checkpoint
 *.jpeg
 *.jpg
 *.txt
+*.data
+*.index
+*.meta
