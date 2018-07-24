@@ -3,7 +3,7 @@ import tensorflow as tf
 
 from tensorflow.python.platform import tf_logging as logging
 
-import research.slim.nets.mobilenet.mobilenet_v2 as mobilenet_v2
+import DenseNet.nets.densenet as densenet
 
 from utils.gen_utils import load_batch, get_dataset, load_batch_dense
 
@@ -62,7 +62,7 @@ labels_to_name = {
 #Nombre d'époques pour l'entraînement
 num_epochs = 100
 #State your batch size
-batch_size = 32
+batch_size = 16
 #Learning rate information and configuration (Up to you to experiment)
 initial_learning_rate = 1e-4
 learning_rate_decay_factor = 0.95
@@ -83,7 +83,7 @@ def run():
             dataset= get_dataset("train", dataset_dir, file_pattern=file_pattern,
                                     file_pattern_for_counting=file_pattern_for_counting, labels_to_name=labels_to_name)
         with tf.name_scope("load_data"):
-            images,_, oh_labels, labels = load_batch_dense(dataset, batch_size, image_size, image_size, num_epochs,
+            images,img_names,_, oh_labels, labels = load_batch_dense(dataset, batch_size, image_size, image_size, num_epochs,
                                                             shuffle=True, is_training=True)
 
         #Calcul of batches/epoch, number of steps after decay learning rate
@@ -92,18 +92,17 @@ def run():
         decay_steps = int(num_epochs_before_decay * num_steps_per_epoch)
 
         #Create the model inference
-        with slim.arg_scope(mobilenet_v2.training_scope(is_training=True, weight_decay=0.0001, stddev=0.01, dropout_keep_prob=0.5, bn_decay=0.997)):
-            #TODO: Check mobilenet_v1 module, var "excluding
-            logits, end_points = mobilenet_v2.mobilenet(images,depth_multiplier=1.4, num_classes = len(labels_to_name))
+        with slim.arg_scope(densenet.densenet_arg_scope(is_training=True)):
+            logits, end_points = densenet.densenet121(images, num_classes = len(labels_to_name), is_training = True)
             
-        excluding = ['MobilenetV2/Logits']   
+        excluding = ['densenet121/final_block', 'densenet121/logits','densenet121/Predictions']   
         variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
 
-        end_points['Predictions_1'] = tf.nn.softmax(logits)
+        end_points['Predictions_1'] = tf.nn.sigmoid(logits)
 
         #Defining losses and regulization ops:
         with tf.name_scope("loss_op"):
-            loss = tf.losses.sigmoid_cross_entropy(onehot_labels = oh_labels, logits = logits)
+            loss = tf.losses.sigmoid_cross_entropy(multi_class_labels = oh_labels, logits = logits)
         
             total_loss = tf.losses.get_total_loss()#obtain the regularization losses as well
         
@@ -124,7 +123,7 @@ def run():
         #State the metrics that you want to predict. We get a predictions that is not one_hot_encoded.
         #FIXME: Replace classifier function (sigmoid / softmax)
         with tf.name_scope("metrics"):
-            predictions = tf.argmax(tf.nn.sigmoid(end_points['Predictions_1']), 1)
+            predictions = tf.argmax(end_points['Predictions_1'], 1)
             names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({
             'Accuracy': tf.metrics.accuracy(labels, predictions),
             })
@@ -159,27 +158,21 @@ def run():
         txt_file = open("Output.txt", "w")
         #Define a Summary Writer:
         summy_writer = tf.summary.FileWriter(logdir=summary_dir, graph=graph)
-        #deFINE A ConfigProto to allow gpu device
-        config = tf.ConfigProto()
-        config.log_device_placement = False
-        config.gpu_options.per_process_gpu_memory_fraction = gpu_p
         #Define a coordinator for running the queues
         coord = tf.train.Coordinator()
         #Definine checkpoint path for restoring the model
         totalloss=0.0
-        totalacc=0.0
         i = 1
-
         with tf.Session(graph=graph) as sess:
             sess.run([tf.global_variables_initializer(),tf.local_variables_initializer()])
             tf.train.start_queue_runners(sess, coord)
             saver_b.restore(sess,ckpt)
-            saver_a.save(sess,train_dir+"\\model", global_step=i,latest_filename="checkpoint")
+            saver_a.save(sess,train_dir+"/model", global_step=i,latest_filename="checkpoint")
             while i!= max_step:
                 sess.run(train_op)
-                a,b,c,tmp_loss, tmp_update= sess.run([labels,oh_labels,end_points['Predictions_1'],total_loss, names_to_updates])
+                i_name,a,b,c,tmp_loss, tmp_update= sess.run([img_names,labels,oh_labels,end_points['Predictions_1'],total_loss, names_to_updates])
                 txt_file.write("*****step i***** " + str(i) + "\n" +"labels : "+ str(a) + "\n" + "oh_labels : "+str(b) +\
-                            "\n"+"predictions : "+str(c)+"\n")
+                            "\n"+"predictions : "+str(c)+"\n"+"images names:"+str(i_name)+"\n")
                 totalloss +=tmp_loss
                 format_str = ('\r%s: step %d,  avg_loss=%.3f, loss = %.2f, streaming_acc=%.2f')
                 sys.stdout.write(format_str % (datetime.time(), i, totalloss/i, tmp_loss, tmp_update['Accuracy']))
@@ -187,7 +180,7 @@ def run():
                     merge = sess.run(my_summary_op)
                     summy_writer.add_summary(merge,i)
                 if i%num_batches_per_epoch==0:
-                    saver_a.save(sess,train_dir, global_step=i,latest_filename="checkpoint")
+                    saver_a.save(sess,train_dir+"/model", global_step=i,latest_filename="checkpoint")
                 i += 1
         txt_file.close()
 if __name__ == '__main__':

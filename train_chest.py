@@ -4,9 +4,7 @@ from tensorflow.python.platform import gfile
 from tensorflow.python.platform import tf_logging as logging
 
 import DenseNet.nets.densenet as densenet
-import DenseNet.preprocessing.densenet_pre as dp
 
-from eval_chest import evaluate
 from utils.gen_utils import load_batch, get_dataset, load_batch_dense
 
 import os
@@ -84,7 +82,7 @@ def run():
         tf.logging.set_verbosity(tf.logging.INFO) #Set the verbosity to INFO level
 
         dataset = get_dataset("train", dataset_dir, file_pattern=file_pattern, file_pattern_for_counting=file_pattern_for_counting, labels_to_name=labels_to_name)
-        images,labels, oh_labels, _ = load_batch_dense(dataset, batch_size, image_size, image_size, is_training=True)
+        images, _, labels, oh_labels, _ = load_batch_dense(dataset, batch_size, image_size, image_size, is_training=True)
 
         #Calcul of batches/epoch, number of steps after decay learning rate
         num_batches_per_epoch = int(dataset.num_samples / batch_size)

@@ -151,7 +151,7 @@ def densenet161(inputs, num_classes=1000, is_training=True, reuse=None, data_for
                     number_layers=[6,12,36,24],
                     is_training=is_training,
                     reuse=reuse,
-                    scope='densenet121')
+                    scope='densenet161')
 
 def densenet_arg_scope(weight_decay=1e-4,
                        batch_norm_decay=0.99,

@@ -109,7 +109,7 @@ def run():
         #State the metrics that you want to predict. We get a predictions that is not one_hot_encoded.
         #FIXME: Replace classifier function (sigmoid / softmax)
         with tf.name_scope("metrics"):
-            predictions = tf.argmax(tf.nn.sigmoid(end_points['Predictions_1']), 1)
+            predictions = tf.argmax(end_points['Predictions_1'], 1)
             names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({
             'Accuracy': tf.metrics.accuracy(labels, predictions),
             })
@@ -149,7 +149,6 @@ def run():
         coord = tf.train.Coordinator()
         #Definine checkpoint path for restoring the model
         totalloss=0.0
-        totalacc=0.0
         i = 1
 
         with tf.Session(graph=graph) as sess:
