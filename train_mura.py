@@ -168,7 +168,8 @@ def run():
                     merge = sess.run(my_summary_op)
                     summy_writer.add_summary(merge,i)
                 if i%num_batches_per_epoch==0:
-                    saver_a.save(sess,train_dir+"\\model", global_step=i,latest_filename="checkpoint")
+                    #TODO: Add os.path.join to every directory variable in a func
+                    saver_a.save(sess,train_dir+"/model", global_step=i,latest_filename="checkpoint")
                 i += 1
         txt_file.close()
 if __name__ == '__main__':
