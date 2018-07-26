@@ -5,8 +5,7 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 
-import tqdm
-
+import cv2
 
 
 def compute_statistics(paths, verbose=False):
@@ -23,10 +22,10 @@ def compute_statistics(paths, verbose=False):
 
 
 
-    batch_size = 100
+    batch_size = 16
     dataset = tf.data.Dataset.from_tensor_slices({'path': paths})
     dataset = dataset.map(
-        lambda path: decode_image(read_file(path)),
+        lambda path: tf.image.decode_image(tf.gfile.FastGFile(path, 'rb').read()),
         num_parallel_calls=32
     )
 
@@ -48,21 +47,11 @@ def compute_statistics(paths, verbose=False):
 
     sess.run(tf.local_variables_initializer())
     batches = range(len(paths) // batch_size)
-    if verbose:
-
-        batches = tqdm.tqdm(batches, unit='batch')
     for _ in batches:
         moment1, moment2 = sess.run(update_ops)
         mean = moment1
         std = np.sqrt(moment2 - moment1**2)
-        if verbose:
-            batches.set_description('mean: %.3f, std: %.3f' % (mean, std))
 
-
-
-    if verbose:
-        print('Mean: ', mean)  
-        print('Std: ', std)    
     return mean, std
 
 
@@ -70,7 +59,10 @@ def compute_statistics(paths, verbose=False):
 
 
 def main():
-    main_dir = ""
-    raw_data = pd.read_csv(os.path.join(main_dir, 'train_image_path.csv'))
-    paths = raw_data[0]
-    compute_statistics(paths.values, verbose=True)
+    main_dir = "D:/MURA-v1.1"
+    raw_data = pd.read_csv(os.path.join(main_dir, 'train_image_paths.csv'))
+    paths = raw_data.iloc[0:]
+    compute_statistics(paths.values)
+
+if __name__=='__main__':
+    main()

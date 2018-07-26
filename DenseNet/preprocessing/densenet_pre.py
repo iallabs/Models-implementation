@@ -199,7 +199,6 @@ def _mean_image_subtraction(image, means,stds):
     for i in range(num_channels):
 
         channels[i] = tf.divide(tf.subtract(channels[i], means[i]),stds[i])
-
     return tf.concat(axis=2, values=channels)
 
 
@@ -289,14 +288,14 @@ def preprocess_for_train(image,
 
     """resize_side = tf.random_uniform(
         [], minval=resize_side_min, maxval=resize_side_max+1, dtype=tf.int32)"""
-    tf.summary.image("raw_image", tf.expand_dims(image,0))
+    
     """image = _aspect_preserving_resize(image, resize_side_min)
     image = _central_crop([image], output_height, output_width)[0]"""
     image = tf.image.resize_bilinear(tf.expand_dims(image,0),[output_height, output_width])[0]
     image = tf.image.random_flip_left_right(image)
     image = _mean_image_subtraction(image, [_R_MEAN,_G_MEAN,_B_MEAN], [_R_STD,_G_STD,_B_STD])
     """image = tf.image.per_image_standardization(image)"""
-    tf.summary.image("final_image", tf.expand_dims(image,0))
+    
     return image
 
 
