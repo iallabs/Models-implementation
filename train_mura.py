@@ -76,7 +76,7 @@ def run():
         decay_steps = int(num_epochs_before_decay * num_steps_per_epoch)
 
         #Create the model inference
-        with slim.arg_scope(mobilenet_v2.training_scope(is_training=True, weight_decay=0.0005, stddev=0.5, dropout_keep_prob=0.5, bn_decay=0.997)):
+        with slim.arg_scope(mobilenet_v2.training_scope(is_training=True, weight_decay=0.0005, stddev=1., bn_decay=0.997)):
             #TODO: Check mobilenet_v1 module, var "excluding
             logits, end_points = mobilenet_v2.mobilenet(images,depth_multiplier=1.4, num_classes = len(labels_to_name))
             
@@ -149,15 +149,14 @@ def run():
         #Definine checkpoint path for restoring the model
         totalloss=0.0
         i = 1
-
         with tf.Session(graph=graph) as sess:
             sess.run([tf.global_variables_initializer(),tf.local_variables_initializer()])
             tf.train.start_queue_runners(sess, coord)
             saver_b.restore(sess,ckpt)
-            saver_a.save(sess,train_dir+"\\model", global_step=i,latest_filename="checkpoint")
+            saver_a.save(sess,os.path.join(train_dir,"model"), global_step=global_step,latest_filename="checkpoint")
             while i!= max_step:
                 sess.run(train_op)
-                i_name,a,b,c,tmp_loss, tmp_update= sess.run([img_names,labels,oh_labels,end_points['Predictions_1'],total_loss, names_to_updates])
+                i,i_name,a,b,c,tmp_loss, tmp_update= sess.run([global_step,img_names,labels,oh_labels,end_points['Predictions_1'],total_loss, names_to_updates])
                 txt_file.write("*****step i***** " + str(i) + "\n" +"labels : "+ str(a) + "\n" + "oh_labels : "+str(b) +\
                             "\n"+"predictions : "+str(c)+"\n"+"images names:"+str(i_name)+"\n")
                 totalloss +=tmp_loss
@@ -168,8 +167,7 @@ def run():
                     summy_writer.add_summary(merge,i)
                 if i%num_batches_per_epoch==0:
                     #TODO: Add os.path.join to every directory variable in a func
-                    saver_a.save(sess,train_dir+"/model", global_step=i)
-                i += 1
+                    saver_a.save(sess,os.path.join(train_dir,"model"), global_step=i)
         coord.request_stop()        
         coord.join()
         txt_file.close()
