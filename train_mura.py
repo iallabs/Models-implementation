@@ -48,7 +48,7 @@ num_epochs = 100
 #State your batch size
 batch_size = 16
 #Learning rate information and configuration (Up to you to experiment)
-initial_learning_rate = 1e-3
+initial_learning_rate = 1e-4
 learning_rate_decay_factor = 0.95
 num_epochs_before_decay = 1
 
@@ -76,7 +76,7 @@ def run():
         decay_steps = int(num_epochs_before_decay * num_steps_per_epoch)
 
         #Create the model inference
-        with slim.arg_scope(mobilenet_v2.training_scope(is_training=True, weight_decay=0.001, stddev=1., bn_decay=0.997)):
+        with slim.arg_scope(mobilenet_v2.training_scope(is_training=True, weight_decay=0., stddev=1., bn_decay=0.997)):
             #TODO: Check mobilenet_v1 module, var "excluding
             logits, end_points = mobilenet_v2.mobilenet(images,depth_multiplier=1.4, num_classes = len(labels_to_name))
             
@@ -111,6 +111,8 @@ def run():
             predictions = tf.argmax(end_points['Predictions_1'], 1)
             names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({
             'Accuracy': tf.metrics.accuracy(labels, predictions),
+            'Precision': tf.metrics.precision(labels, predictions),
+            'Recall': tf.metrics.recall(labels, predictions)
             })
             for name, value in names_to_values.items():
                 summary_name = 'train/%s' % name
@@ -138,7 +140,7 @@ def run():
         else:
             ckpt = checkpoint_file
             saver_b = tf.train.Saver(variables_to_restore)
-        saver_a = tf.train.Saver(max_to_keep=None)
+        saver_a = tf.train.Saver(max_to_keep=num_epochs)
         #Define a txt file to write inference results:
         txt_file = open("Output.txt", "w")
         #Define a Summary Writer:
