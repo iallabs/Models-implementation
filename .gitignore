@@ -131,3 +131,4 @@ checkpoint
 *.data-*
 *.index-*
 *.meta-*
+model-*
