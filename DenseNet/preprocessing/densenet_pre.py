@@ -285,7 +285,7 @@ def preprocess_for_train(image,
     Returns:
         A preprocessed image.
     """
-
+    tf.summary.image("raw_image", tf.expand_dims(image,0))
     """resize_side = tf.random_uniform(
         [], minval=resize_side_min, maxval=resize_side_max+1, dtype=tf.int32)"""
     
@@ -294,7 +294,7 @@ def preprocess_for_train(image,
     image = tf.image.resize_bilinear(tf.expand_dims(image,0),[output_height, output_width])[0]
     image = tf.image.random_flip_left_right(image)
     image = _mean_image_subtraction(image, [_R_MEAN,_G_MEAN,_B_MEAN], [_R_STD,_G_STD,_B_STD])
-    """image = tf.image.per_image_standardization(image)"""
+    tf.summary.image("final_image", tf.expand_dims(image,0))
     
     return image
 
@@ -321,7 +321,6 @@ def preprocess_for_eval(image, output_height, output_width, resize_side):
     image = _central_crop([image], output_height, output_width)[0]"""
     image = tf.image.resize_bilinear(tf.expand_dims(image,0),[output_height, output_width])[0]
     image = _mean_image_subtraction(image, [_R_MEAN,_G_MEAN,_B_MEAN], [_R_STD,_G_STD,_B_STD])
-    """image = tf.image.per_image_standardization(image)"""
 
     tf.summary.image("final_image", tf.expand_dims(image,0))
     return image

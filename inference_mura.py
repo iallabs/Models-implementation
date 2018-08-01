@@ -12,17 +12,14 @@ import os
 import numpy as np
 dataset_dir="D:/MURA-v1.1/"
 checkpoint_dir = os.getcwd()
-checkpoint_file = os.getcwd()+"\\train\\training\\model-4600"
+checkpoint_file = os.getcwd()+"\\train\\training\\model-25300"
 
 image_size = 224
 #Images
 labels_to_name = {0:'negative', 
                 1:'positive'
                 }
-names_to_labels = {
-  'negative':0,
-  'positive':1
-}
+
 tf.logging.set_verbosity(tf.logging.INFO)
 grouped = _get_infos("D:/MURA-v1.1","valid_image_paths.csv")
 
@@ -37,18 +34,13 @@ init_fn = slim.assign_from_checkpoint_fn(checkpoint_file, slim.get_model_variabl
 
 endpoints['Predictions'] = tf.nn.softmax(logits)
 totalacc = 0.
-txt_file = open("Inference-mura-4600.txt", "w")
+txt_file = open("Inference-mura-25300.txt", "w")
 with tf.Session() as sess:
-  init_fn(sess)
+  sess.run(tf.global_variables_initializer())
   for i in range(len(grouped)):
     row = grouped.iloc[i]
     class_name = row[0].split('/')[-2].split('_')[-1]
-    label = names_to_labels[class_name]
-    pred_label = tf.cast(tf.argmax(endpoints['Predictions']), tf.int32)
-    accuracy = tf.cast(tf.equal(label,pred_label), tf.float32)
-    y,acc = sess.run([endpoints['Predictions'], accuracy], feed_dict={file_input: dataset_dir+row[0]})
-    totalacc += acc
+    y, logit = sess.run([endpoints['Predictions'], logits], feed_dict={file_input: dataset_dir+row[0]})
+
     txt_file.write("image %d, prediction class %s, prediction value %.4f, image path:%s \n"%(i,labels_to_name[y.argmax()],y.max(),row[0]))
-  totalacc /= len(grouped)
-  txt_file.write("total accuracy of evaluation/inference: %.3f\n"%(totalacc))
 txt_file.close()

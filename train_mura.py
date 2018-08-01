@@ -62,6 +62,7 @@ def run():
     #Adding the graph:
     #Set the verbosity to INFO level
     tf.reset_default_graph()
+    tf.logging.set_verbosity(tf.logging.INFO)
     with tf.Graph().as_default() as graph:
         with tf.name_scope("dataset"):
             dataset= get_dataset("train", dataset_dir, file_pattern=file_pattern,
@@ -82,7 +83,6 @@ def run():
             
         excluding = ['MobilenetV2/Logits']   
         variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
-
         end_points['Predictions_1'] = tf.nn.softmax(logits)
 
         #Defining losses and regulization ops:
@@ -125,7 +125,6 @@ def run():
             tf.summary.scalar('losses/Total_Loss', total_loss)
             tf.summary.scalar('learning_rate', lr)
             tf.summary.scalar('global_step', global_step)
-            tf.summary.histogram('images',images)
             tf.summary.histogram('proba_perso',end_points['Predictions_1'])        
             #Create the train_op#.
         with tf.name_scope("merge_summary"):       
@@ -139,8 +138,10 @@ def run():
             saver_b = tf.train.Saver()
         else:
             ckpt = checkpoint_file
-            saver_b = tf.train.Saver(variables_to_restore)
-        saver_a = tf.train.Saver(max_to_keep=num_epochs)
+            saver_b = tf.train.Saver(variables_to_restore,name="Restoring_Saver")
+        #Extracting global variables collections and feed it to our Model Saver
+        variables_to_save = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
+        saver_a = tf.train.Saver(variables_to_save,max_to_keep=num_epochs, name="Model_Saver")
         #Define a txt file to write inference results:
         txt_file = open("Output.txt", "w")
         #Define a Summary Writer:
@@ -148,19 +149,26 @@ def run():
         #deFINE A ConfigProto to allow gpu device
         #Define a coordinator for running the queues
         coord = tf.train.Coordinator()
+        config = tf.ConfigProto()
+        config.gpu_options.allow_growth = True
+
         #Definine checkpoint path for restoring the model
-        totalloss=0.0
+        totalloss = 0.0
         i = 1
-        with tf.Session(graph=graph) as sess:
-            sess.run([tf.global_variables_initializer(),tf.local_variables_initializer()])
+        with tf.Session(graph=graph, config=config) as sess:
+            sess.run([tf.global_variables_initializer(),
+                        tf.local_variables_initializer()])
             tf.train.start_queue_runners(sess, coord)
             saver_b.restore(sess,ckpt)
             saver_a.save(sess,os.path.join(train_dir,"model"), global_step=global_step,latest_filename="checkpoint")
             while i!= max_step:
                 sess.run(train_op)
-                i,i_name,a,b,c,tmp_loss, tmp_update= sess.run([global_step,img_names,labels,oh_labels,end_points['Predictions_1'],total_loss, names_to_updates])
-                txt_file.write("*****step i***** " + str(i) + "\n" +"labels : "+ str(a) + "\n" + "oh_labels : "+str(b) +\
-                            "\n"+"predictions : "+str(c)+"\n"+"images names:"+str(i_name)+"\n")
+                i,i_name,a,b,c,tmp_loss, tmp_update= sess.run([global_step,img_names,labels,oh_labels,
+                                                                end_points['Predictions_1'],total_loss,
+                                                                names_to_updates])
+                txt_file.write("*****step i***** " + str(i) + "\n" +"labels : "+ str(a) +\
+                                "\n" + "oh_labels : "+str(b) +\
+                                "\n"+"predictions : "+str(c)+"\n"+"images names:"+str(i_name)+"\n")
                 totalloss +=tmp_loss
                 format_str = ('\r%s: step %d,  avg_loss=%.3f, loss = %.2f, streaming_acc=%.2f')
                 sys.stdout.write(format_str % (datetime.time(), i, totalloss/i, tmp_loss, tmp_update['Accuracy']))
