@@ -16,13 +16,13 @@ slim = tf.contrib.slim
 #=======Dataset Informations=======#
 dataset_dir = "D:/MURA-v1.1/"
 main_dir = os.getcwd()
-log_dir= main_dir + "\\train\\log_eval"
+log_dir= os.path.join(main_dir, os.path.join("train","log_eval"))
 file_pattern = "MURA_%s_*.tfrecord"
 file_pattern_for_counting = "MURA"
 batch_size = 8
 image_size = 224
 labels_to_name= {0:"negative", 1:"positive"}
-train_dir = main_dir+"\\train\\training"
+train_dir = os.path.join(main_dir,os.path.join("train", "training"))
 #=======Training Informations======#
 #Nombre d'époques pour l'entraînement
 def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counting, labels_to_name, batch_size, image_size):
@@ -47,7 +47,7 @@ def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counti
 
 
         #Create the model inference
-        with slim.arg_scope(mobilenet_v2.training_scope(is_training=False)):
+        with slim.arg_scope(mobilenet_v2.training_scope(is_training=True)):
             #TODO: Check mobilenet_v1 module, var "excluding
             logits, end_points = mobilenet_v2.mobilenet(images,depth_multiplier=1.4, num_classes = len(labels_to_name))
         end_points['Predictions_1'] = tf.nn.softmax(logits)
@@ -62,6 +62,8 @@ def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counti
         #Define the metrics to evaluate
         names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({
         'Accuracy_validation': tf.metrics.accuracy(tf.argmax(oh_labels,1), predictions),
+        'Precision': tf.metrics.precision(labels, predictions),
+        'Recall': tf.metrics.recall(labels, predictions)
         })
         for name, value in names_to_values.items():
             summary_name = 'eval/%s' % name

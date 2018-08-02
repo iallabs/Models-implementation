@@ -5,7 +5,7 @@ from tensorflow.python.platform import tf_logging as logging
 
 import research.slim.nets.mobilenet.mobilenet_v2 as mobilenet_v2
 from utils.gen_utils import load_batch, get_dataset, load_batch_dense
-"""from utils.gen_tfrec import load_batch_dense, get_dataset"""
+
 import os
 import sys
 import time
@@ -25,7 +25,7 @@ FLAGS = flags.FLAGS
 #=======Dataset Informations=======#
 dataset_dir = FLAGS.dataset_dir
 train_dir = FLAGS.train_dir
-summary_dir = train_dir + '/'+ "summary"
+summary_dir = os.path.join(train_dir , "summary")
 
 gpu_p = FLAGS.gpu_p
 #Emplacement du checkpoint file
@@ -55,9 +55,9 @@ num_epochs_before_decay = 1
 def run():
     #Create log_dir:
     if not os.path.exists(train_dir):
-        os.mkdir(os.getcwd()+'/'+train_dir)
+        os.mkdir(os.path.join(os.getcwd(),train_dir))
     if not os.path.exists(summary_dir):
-        os.mkdir(os.getcwd()+'/'+summary_dir)
+        os.mkdir(os.path.join(os.getcwd(),summary_dir))
     #===================================================================== Training ===========================================================================#
     #Adding the graph:
     #Set the verbosity to INFO level
@@ -77,7 +77,7 @@ def run():
         decay_steps = int(num_epochs_before_decay * num_steps_per_epoch)
 
         #Create the model inference
-        with slim.arg_scope(mobilenet_v2.training_scope(is_training=True, weight_decay=0., stddev=1., bn_decay=0.997)):
+        with slim.arg_scope(mobilenet_v2.training_scope(is_training=True, weight_decay=0.001, stddev=1., bn_decay=0.997)):
             #TODO: Check mobilenet_v1 module, var "excluding
             logits, end_points = mobilenet_v2.mobilenet(images,depth_multiplier=1.4, num_classes = len(labels_to_name))
             
@@ -149,18 +149,17 @@ def run():
         #deFINE A ConfigProto to allow gpu device
         #Define a coordinator for running the queues
         coord = tf.train.Coordinator()
-        config = tf.ConfigProto()
-        config.gpu_options.allow_growth = True
 
         #Definine checkpoint path for restoring the model
         totalloss = 0.0
         i = 1
-        with tf.Session(graph=graph, config=config) as sess:
+        with tf.Session(graph=graph) as sess:
             sess.run([tf.global_variables_initializer(),
                         tf.local_variables_initializer()])
             tf.train.start_queue_runners(sess, coord)
             saver_b.restore(sess,ckpt)
-            saver_a.save(sess,os.path.join(train_dir,"model"), global_step=global_step,latest_filename="checkpoint")
+            if not (ckpt_state and ckpt_state.model_checkpoint_path):
+                saver_a.save(sess,os.path.join(train_dir,"model"), global_step=global_step,latest_filename="checkpoint")
             while i!= max_step:
                 sess.run(train_op)
                 i,i_name,a,b,c,tmp_loss, tmp_update= sess.run([global_step,img_names,labels,oh_labels,

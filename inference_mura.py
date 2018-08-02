@@ -11,8 +11,8 @@ import pandas as pd
 import os
 import numpy as np
 dataset_dir="D:/MURA-v1.1/"
-checkpoint_dir = os.getcwd()
-checkpoint_file = os.getcwd()+"\\train\\training\\model-25300"
+checkpoint_dir = os.path.join(os.getcwd(),os.path.join("train","training"))
+checkpoint_file = os.path.join(checkpoint_dir,"model-112700")
 
 image_size = 224
 #Images
@@ -29,14 +29,15 @@ image = tf.image.convert_image_dtype(image, tf.float32)
 image.set_shape([None,None,3])
 image_a = dp.preprocess_image(image, 224,224, is_training=False)
 images_bis = tf.expand_dims(image_a,0)
-logits, endpoints = mobilenet_v2.mobilenet(images_bis,depth_multiplier=1.4, num_classes = len(labels_to_name))
+with slim.arg_scope(mobilenet_v2.training_scope(is_training=True)):
+  logits, endpoints = mobilenet_v2.mobilenet(images_bis,depth_multiplier=1.4, num_classes = len(labels_to_name))
 init_fn = slim.assign_from_checkpoint_fn(checkpoint_file, slim.get_model_variables('MobilenetV2'))
 
 endpoints['Predictions'] = tf.nn.softmax(logits)
 totalacc = 0.
-txt_file = open("Inference-mura-25300.txt", "w")
+txt_file = open("Inference-mura-112700.txt", "w")
 with tf.Session() as sess:
-  sess.run(tf.global_variables_initializer())
+  init_fn(sess)
   for i in range(len(grouped)):
     row = grouped.iloc[i]
     class_name = row[0].split('/')[-2].split('_')[-1]
