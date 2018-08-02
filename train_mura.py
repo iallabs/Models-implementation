@@ -79,11 +79,11 @@ def run():
         #Create the model inference
         with slim.arg_scope(mobilenet_v2.training_scope(is_training=True, weight_decay=0.001, stddev=1., bn_decay=0.997)):
             #TODO: Check mobilenet_v1 module, var "excluding
-            logits, end_points = mobilenet_v2.mobilenet(images,depth_multiplier=1.4, num_classes = len(labels_to_name))
+            logits, _ = mobilenet_v2.mobilenet(images,depth_multiplier=1.4, num_classes = len(labels_to_name))
             
         excluding = ['MobilenetV2/Logits']   
         variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
-        end_points['Predictions_1'] = tf.nn.softmax(logits)
+        pred = tf.nn.softmax(logits)
 
         #Defining losses and regulization ops:
         with tf.name_scope("loss_op"):
@@ -108,7 +108,7 @@ def run():
         #State the metrics that you want to predict. We get a predictions that is not one_hot_encoded.
         #FIXME: Replace classifier function (sigmoid / softmax)
         with tf.name_scope("metrics"):
-            predictions = tf.argmax(end_points['Predictions_1'], 1)
+            predictions = tf.argmax(pred, 1)
             names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({
             'Accuracy': tf.metrics.accuracy(labels, predictions),
             'Precision': tf.metrics.precision(labels, predictions),
@@ -125,7 +125,7 @@ def run():
             tf.summary.scalar('losses/Total_Loss', total_loss)
             tf.summary.scalar('learning_rate', lr)
             tf.summary.scalar('global_step', global_step)
-            tf.summary.histogram('proba_perso',end_points['Predictions_1'])        
+            tf.summary.histogram('proba_perso',pred)        
             #Create the train_op#.
         with tf.name_scope("merge_summary"):       
             my_summary_op = tf.summary.merge_all()
@@ -163,7 +163,7 @@ def run():
             while i!= max_step:
                 sess.run(train_op)
                 i,i_name,a,b,c,tmp_loss, tmp_update= sess.run([global_step,img_names,labels,oh_labels,
-                                                                end_points['Predictions_1'],total_loss,
+                                                                pred,total_loss,
                                                                 names_to_updates])
                 txt_file.write("*****step i***** " + str(i) + "\n" +"labels : "+ str(a) +\
                                 "\n" + "oh_labels : "+str(b) +\

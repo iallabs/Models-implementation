@@ -5,7 +5,7 @@ from tensorflow.python.platform import tf_logging as logging
 
 import DenseNet.nets.densenet as densenet
 
-from utils.gen_utils import load_batch, get_dataset, load_batch_dense
+from utils.gen_tfrec import load_batch, get_dataset, load_batch_dense
 
 import os
 import sys
@@ -26,7 +26,7 @@ FLAGS = flags.FLAGS
 #=======Dataset Informations=======#
 dataset_dir = FLAGS.dataset_dir
 train_dir = FLAGS.train_dir
-summary_dir = train_dir + '/'+ "summary"
+summary_dir = os.path.join(train_dir, "summary")
 
 gpu_p = FLAGS.gpu_p
 #Emplacement du checkpoint file
@@ -62,43 +62,43 @@ labels_to_name = {
 #Nombre d'époques pour l'entraînement
 num_epochs = 100
 #State your batch size
-batch_size = 16
+batch_size = 64
 #Learning rate information and configuration (Up to you to experiment)
-initial_learning_rate = 1e-3
+initial_learning_rate = 6e-4
 learning_rate_decay_factor = 0.95
-num_epochs_before_decay = 0.5
+num_epochs_before_decay = 1
 
 def run():
     #Create log_dir:
     if not os.path.exists(train_dir):
-        os.mkdir(os.getcwd()+'/'+train_dir)
+        os.mkdir(os.path.join(os.getcwd(),train_dir))
     if not os.path.exists(summary_dir):
-        os.mkdir(os.getcwd()+'/'+summary_dir)
+        os.mkdir(os.path.join(os.getcwd(),summary_dir))
     #===================================================================== Training ===========================================================================#
     #Adding the graph:
     tf.logging.set_verbosity(tf.logging.INFO) #Set the verbosity to INFO level
     tf.reset_default_graph()
     with tf.Graph().as_default() as graph:
         with tf.name_scope("dataset"):
-            dataset= get_dataset("train", dataset_dir, file_pattern=file_pattern,
+            dataset, num_samples= get_dataset("train", dataset_dir, file_pattern=file_pattern,
                                     file_pattern_for_counting=file_pattern_for_counting, labels_to_name=labels_to_name)
         with tf.name_scope("load_data"):
-            images,img_names,_, oh_labels, labels = load_batch_dense(dataset, batch_size, image_size, image_size, num_epochs,
+            images,img_names, oh_labels, labels = load_batch_dense(dataset, batch_size, image_size, image_size, num_epochs,
                                                             shuffle=True, is_training=True)
 
         #Calcul of batches/epoch, number of steps after decay learning rate
-        num_batches_per_epoch = int(dataset.num_samples / batch_size)
+        num_batches_per_epoch = int(num_samples / batch_size)
         num_steps_per_epoch = num_batches_per_epoch #Because one step is one batch processed
         decay_steps = int(num_epochs_before_decay * num_steps_per_epoch)
 
         #Create the model inference
         with slim.arg_scope(densenet.densenet_arg_scope(is_training=True)):
-            logits, end_points = densenet.densenet121(images, num_classes = len(labels_to_name), is_training = True)
+            logits, _ = densenet.densenet121(images, num_classes = len(labels_to_name), is_training = True)
             
         excluding = ['densenet121/final_block', 'densenet121/logits','densenet121/Predictions']   
         variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
         logits = tf.squeeze(logits)
-        end_points['Predictions_1'] = tf.nn.sigmoid(logits)
+        pred = tf.nn.sigmoid(logits)
 
         #Defining losses and regulization ops:
         with tf.name_scope("loss_op"):
@@ -123,9 +123,11 @@ def run():
         #State the metrics that you want to predict. We get a predictions that is not one_hot_encoded.
         #FIXME: Replace classifier function (sigmoid / softmax)
         with tf.name_scope("metrics"):
-            predictions = tf.argmax(end_points['Predictions_1'], 1)
+            predictions = tf.argmax(pred, 1)
             names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({
             'Accuracy': tf.metrics.accuracy(labels, predictions),
+            'Precision': tf.metrics.precision(labels, predictions),
+            'Recall': tf.metrics.recall(labels, predictions)
             })
             for name, value in names_to_values.items():
                 summary_name = 'train/%s' % name
@@ -139,7 +141,7 @@ def run():
             tf.summary.scalar('learning_rate', lr)
             tf.summary.scalar('global_step', global_step)
             tf.summary.histogram('images',images)
-            tf.summary.histogram('proba_perso',end_points['Predictions_1'])        
+            tf.summary.histogram('proba_perso',pred)        
             #Create the train_op#.
         with tf.name_scope("merge_summary"):       
             my_summary_op = tf.summary.merge_all()
@@ -167,10 +169,10 @@ def run():
             sess.run([tf.global_variables_initializer(),tf.local_variables_initializer()])
             tf.train.start_queue_runners(sess, coord)
             saver_b.restore(sess,ckpt)
-            saver_a.save(sess,train_dir+"/model", global_step=i,latest_filename="checkpoint")
+            saver_a.save(sess,os.path.join(train_dir,"model"), global_step=i,latest_filename="checkpoint")
             while i!= max_step:
                 sess.run(train_op)
-                i_name,a,b,c,tmp_loss, tmp_update= sess.run([img_names,labels,oh_labels,end_points['Predictions_1'],total_loss, names_to_updates])
+                i_name,a,b,c,tmp_loss, tmp_update= sess.run([img_names,labels,oh_labels,pred,total_loss, names_to_updates])
                 txt_file.write("*****step i***** " + str(i) + "\n" +"labels : "+ str(a) + "\n" + "oh_labels : "+str(b) +\
                             "\n"+"predictions : "+str(c)+"\n"+"images names:"+str(i_name)+"\n")
                 totalloss +=tmp_loss
@@ -180,7 +182,7 @@ def run():
                     merge = sess.run(my_summary_op)
                     summy_writer.add_summary(merge,i)
                 if i%num_batches_per_epoch==0:
-                    saver_a.save(sess,train_dir+"/model", global_step=i,latest_filename="checkpoint")
+                    saver_a.save(sess,os.path.join(train_dir,"model"), global_step=i)
                 i += 1
         txt_file.close()
 if __name__ == '__main__':

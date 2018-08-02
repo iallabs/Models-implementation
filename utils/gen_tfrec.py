@@ -38,10 +38,9 @@ def get_dataset(phase_name, dataset_dir, file_pattern, file_pattern_for_counting
         parsed_example = tf.parse_single_example(example, feature)
         parsed_example['image/encoded'] = tf.image.decode_image(parsed_example['image/encoded'], channels=3)
         parsed_example['image/encoded'] = tf.image.convert_image_dtype(parsed_example['image/encoded'], dtype=tf.float32)
-        parsed_example['image/encoded'] = tf.reshape(parsed_example['image/encoded'],[-1,3])
-        parsed_example['image/encoded'] = tf.expand_dims(parsed_example['image/encoded'],0)
         labels = parsed_example['image/class/label']
         parsed_example['image/class/one_hot'] = tf.cast(tf.one_hot(labels, depth=num_class, on_value=1.0, off_value = 0.0), tf.int64)
+
         return parsed_example
     dataset = dataset.map(parse_fn)
     return dataset, num_samples
@@ -71,13 +70,14 @@ def load_batch_dense(dataset, batch_size, height, width, num_epochs=None, is_tra
     - images(Tensor): a Tensor of the shape (batch_size, height, width, channels) that contain one batch of images
     - labels(Tensor): the batch's labels with the shape (batch_size,) (requires one_hot_encoding).
     """
-    dataset = dataset.repeat(num_epochs)
     def process_fn(example):
-        tf.summary.image("raw_image", tf.expand_dims(example['image/encoded'],0))
+        tf.summary.image("final_image", example['image/encoded'])
+        example['image/encoded'].set_shape([None,None,3])
         example['image/encoded'] = dp.preprocess_image(example['image/encoded'], height, width, is_training)
         
         return example
     dataset = dataset.map(process_fn)
+    dataset = dataset.repeat(num_epochs)
     dataset = dataset.batch(batch_size)
     parsed_batch = dataset.make_one_shot_iterator().get_next()
     tf.summary.image("final_image", parsed_batch['image/encoded'])

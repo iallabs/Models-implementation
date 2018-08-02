@@ -153,7 +153,7 @@ def densenet161(inputs, num_classes=1000, is_training=True, reuse=None, data_for
                     reuse=reuse,
                     scope='densenet161')
 
-def densenet_arg_scope(weight_decay=1e-4,
+def densenet_arg_scope(weight_decay=1e-3,
                        batch_norm_decay=0.99,
                        batch_norm_epsilon=1.1e-5, is_training=True,data_format='NHWC'):
 
