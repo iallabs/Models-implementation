@@ -46,7 +46,7 @@ labels_to_name = {
 #Nombre d'époques pour l'entraînement
 num_epochs = 100
 #State your batch size
-batch_size = 16
+batch_size = 32
 #Learning rate information and configuration (Up to you to experiment)
 initial_learning_rate = 1e-4
 learning_rate_decay_factor = 0.95
@@ -131,6 +131,7 @@ def run():
             my_summary_op = tf.summary.merge_all()
             #Define max steps:
         max_step = num_epochs*num_steps_per_epoch
+        print(max_step)
         #NOTE: We define in this section the properties of the session to run (saver, summaries)
         ckpt_state = tf.train.get_checkpoint_state(train_dir)
         if ckpt_state and ckpt_state.model_checkpoint_path:

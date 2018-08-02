@@ -6,7 +6,7 @@ slim = tf.contrib.slim
 def _global_avg_pool2d(inputs, scope=None,outputs=None, data_format="NHWC"):
     axis = [1,2] if data_format=="NHWC" else [2,3]
     with tf.variable_scope(scope, 'g_avg', [inputs]) as v_scope:
-        net = tf.reduce_mean(inputs, axis=axis,keep_dims=True)
+        net = tf.reduce_mean(inputs, axis=axis,keepdims=True)
         net = slim.utils.collect_named_outputs(outputs, v_scope.name, net)
     return net
 
