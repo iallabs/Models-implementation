@@ -91,7 +91,7 @@ def densenet(inputs,
                          _dense_block, _transition_block]), \
                                     slim.arg_scope([_conv], dropout=dropout_rate):
             net = inputs
-
+            print("inputs:"+str(net))
         # initial convolution
       
             net = slim.conv2d(net, number_filters, 7, stride=2, scope='conv1')
@@ -166,6 +166,7 @@ def densenet_arg_scope(weight_decay=1e-3,
                          biases_initializer=None):
             with slim.arg_scope([slim.batch_norm],
                           scale=True,
+                          update_collections=None,# Make sure updates happen automatically
                           decay=batch_norm_decay,
                           epsilon=batch_norm_epsilon) as scope:
                 return scope

@@ -63,7 +63,8 @@ def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counti
         names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({
         'Accuracy_validation': tf.metrics.accuracy(tf.argmax(oh_labels,1), predictions),
         'Precision': tf.metrics.precision(labels, predictions),
-        'Recall': tf.metrics.recall(labels, predictions)
+        'Recall': tf.metrics.recall(labels, predictions),
+        'AUC': tf.metrics.auc(labels,predictions)
         })
         for name, value in names_to_values.items():
             summary_name = 'eval/%s' % name

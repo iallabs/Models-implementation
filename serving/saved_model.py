@@ -15,7 +15,7 @@ tf.app.flags.DEFINE_string('work_dir', '/tmp', 'Working directory.')
 FLAGS = tf.app.flags.FLAGS
 dataset_dir="C:/Users/Lenovo/Documents/MURA-v1.1/"
 checkpoint_dir = os.getcwd()
-checkpoint_file = os.getcwd()+"\\train\\training\\model-36800"
+checkpoint_file = os.getcwd()+"\\train\\training\\model-54050"
 
 image_size = 224
 #Images
@@ -27,8 +27,8 @@ tf.logging.set_verbosity(tf.logging.INFO)
 
 serialized_tf_example = tf.placeholder(tf.string, name='tf_example')
 feature_configs = {'x':tf.FixedLenFeature((),tf.string)}
-tf_example = tf.parse_example(serialized_tf_example, feature_configs)
-image = tf.image.decode_png(tf_example['x'], channels=3)
+tf_example = tf.parse_single_example(serialized_tf_example, feature_configs)
+image = tf.image.decode_image(tf_example['x'], channels=3)
 image = tf.image.convert_image_dtype(image, tf.float32)
 image.set_shape([None,None,3])
 image_a = dp.preprocess_image(image, 224,224, is_training=False)
@@ -44,7 +44,7 @@ table = tf.contrib.lookup.index_to_string_table_from_tensor(
 prediction_classes = table.lookup(tf.to_int64(indices))
 with tf.Session() as sess:
   saver.restore(sess,  checkpoint_file)
-  export_path_base = "./saved_model"
+  export_path_base = "saved_model"
   export_path = os.path.join(
       tf.compat.as_bytes(export_path_base),
       tf.compat.as_bytes(str(FLAGS.model_version)))

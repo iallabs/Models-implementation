@@ -112,7 +112,8 @@ def run():
             names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({
             'Accuracy': tf.metrics.accuracy(labels, predictions),
             'Precision': tf.metrics.precision(labels, predictions),
-            'Recall': tf.metrics.recall(labels, predictions)
+            'Recall': tf.metrics.recall(labels, predictions),
+            'AUC': tf.metrics.auc(labels,predictions)
             })
             for name, value in names_to_values.items():
                 summary_name = 'train/%s' % name
@@ -150,7 +151,7 @@ def run():
         #deFINE A ConfigProto to allow gpu device
         #Define a coordinator for running the queues
         coord = tf.train.Coordinator()
-
+        print(tf.get_collection(tf.GraphKeys.UPDATE_OPS))
         #Definine checkpoint path for restoring the model
         totalloss = 0.0
         i = 1
@@ -178,8 +179,8 @@ def run():
                 if i%num_batches_per_epoch==0:
                     #TODO: Add os.path.join to every directory variable in a func
                     saver_a.save(sess,os.path.join(train_dir,"model"), global_step=i)
-        coord.request_stop()        
-        coord.join()
+            coord.request_stop()        
+            coord.join()
         txt_file.close()
         
 if __name__ == '__main__':

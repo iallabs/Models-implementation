@@ -2,8 +2,6 @@ import tensorflow as tf
 slim = tf.contrib.slim
 from utils.utils_csv import _get_infos
 import research.slim.nets.mobilenet.mobilenet_v2 as mobilenet_v2
-import research.slim.datasets.imagenet as imagenet
-from tensorflow.python.platform import gfile
 from research.slim.preprocessing import inception_preprocessing
 import DenseNet.preprocessing.densenet_pre as dp
 

@@ -62,7 +62,7 @@ labels_to_name = {
 #Nombre d'époques pour l'entraînement
 num_epochs = 100
 #State your batch size
-batch_size = 64
+batch_size = 1
 #Learning rate information and configuration (Up to you to experiment)
 initial_learning_rate = 6e-4
 learning_rate_decay_factor = 0.95
@@ -97,6 +97,7 @@ def run():
             
         excluding = ['densenet121/final_block', 'densenet121/logits','densenet121/Predictions']   
         variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
+        print("logits"+str(logits))
         logits = tf.squeeze(logits)
         pred = tf.nn.sigmoid(logits)
 
@@ -163,7 +164,6 @@ def run():
         #Define a coordinator for running the queues
         coord = tf.train.Coordinator()
         config = tf.ConfigProto()
-        config.gpu_option.per_process_gpu_memory_fraction=gpu_p
         #Definine checkpoint path for restoring the model
         totalloss=0.0
         i = 1
@@ -173,8 +173,7 @@ def run():
             saver_b.restore(sess,ckpt)
             saver_a.save(sess,os.path.join(train_dir,"model"), global_step=i,latest_filename="checkpoint")
             while i!= max_step:
-                sess.run(train_op)
-                i_name,a,b,c,tmp_loss, tmp_update= sess.run([img_names,labels,oh_labels,pred,total_loss, names_to_updates])
+                _,i,i_name,a,b,c,tmp_loss, tmp_update= sess.run([train_op,global_step,img_names,labels,oh_labels,pred,total_loss, names_to_updates])
                 txt_file.write("*****step i***** " + str(i) + "\n" +"labels : "+ str(a) + "\n" + "oh_labels : "+str(b) +\
                             "\n"+"predictions : "+str(c)+"\n"+"images names:"+str(i_name)+"\n")
                 totalloss +=tmp_loss
@@ -185,7 +184,6 @@ def run():
                     summy_writer.add_summary(merge,i)
                 if i%num_batches_per_epoch==0:
                     saver_a.save(sess,os.path.join(train_dir,"model"), global_step=i)
-                i += 1
         txt_file.close()
 if __name__ == '__main__':
     run()
