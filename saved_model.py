@@ -33,7 +33,7 @@ image = tf.image.convert_image_dtype(image, tf.float32)
 image.set_shape([None,None,3])
 image_a = dp.preprocess_image(image, 224,224, is_training=False)
 images_bis = tf.expand_dims(image_a,0)
-with slim.arg_scope(mobilenet_v2.training_scope(is_training=False)):
+with slim.arg_scope(mobilenet_v2.training_scope(is_training=True)):
   logits, _ = mobilenet_v2.mobilenet(images_bis,depth_multiplier=1.4, num_classes = len(labels_to_name))
 variables = slim.get_variables_to_restore()
 saver = tf.train.Saver(variables)
@@ -72,7 +72,7 @@ with tf.Session() as sess:
           },
           method_name=tf.saved_model.signature_constants.CLASSIFY_METHOD_NAME))
 
-  tensor_info_x = tf.saved_model.utils.build_tensor_info(x)
+  tensor_info_x = tf.saved_model.utils.build_tensor_info(tf_example['x'])
   tensor_info_y = tf.saved_model.utils.build_tensor_info(y)
 
   prediction_signature = (

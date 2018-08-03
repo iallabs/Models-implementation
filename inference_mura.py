@@ -12,7 +12,7 @@ import os
 import numpy as np
 dataset_dir="D:/MURA-v1.1/"
 checkpoint_dir = os.path.join(os.getcwd(),os.path.join("train","training"))
-checkpoint_file = os.path.join(checkpoint_dir,"model-112700")
+checkpoint_file = os.path.join(checkpoint_dir,"model-56350")
 
 image_size = 224
 #Images
@@ -35,7 +35,7 @@ init_fn = slim.assign_from_checkpoint_fn(checkpoint_file, slim.get_model_variabl
 
 endpoints['Predictions'] = tf.nn.softmax(logits)
 totalacc = 0.
-txt_file = open("Inference-mura-112700.txt", "w")
+txt_file = open("Inference-mura-56350.txt", "w")
 with tf.Session() as sess:
   init_fn(sess)
   for i in range(len(grouped)):

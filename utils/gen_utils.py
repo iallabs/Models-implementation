@@ -125,7 +125,6 @@ def load_batch_dense(dataset, batch_size, height, width, num_epochs=None, is_tra
     #First, create a provider given by slim:
     provider = slim.dataset_data_provider.DatasetDataProvider(
         dataset,
-        num_epochs=num_epochs,
     )
 
     raw_image, img_name, true_height, true_width, label = provider.get(['image','filename','height','width','label'])
@@ -146,6 +145,7 @@ def load_batch_dense(dataset, batch_size, height, width, num_epochs=None, is_tra
 
     images,img_names, raw_images, one_hot_labels, labels = tf.train.batch(
         [image, img_name,raw_image, one_hot_labels, label],
+        num_threads=2,
         batch_size = batch_size,
         capacity = batch_size,
         allow_smaller_final_batch = True)
