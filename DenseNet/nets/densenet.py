@@ -18,7 +18,6 @@ def _conv(inputs, number_filters, kernel_size, strides=1, dropout=None, scope=No
         net = slim.conv2d(net, number_filters, kernel_size)
         if dropout:
             net = tf.nn.dropout(net, keep_prob=dropout)
-        net = slim.utils.collect_named_outputs(outputs, v_scope.name, net)
     return net
 
 @slim.add_arg_scope
@@ -31,7 +30,6 @@ def _block(inputs, number_filters, scope=None, outputs=None, data_format='NHWC')
             net = tf.concat([inputs, net], 3)
         else:
             net = tf.concat([inputs, net], 1)
-        net = slim.utils.collect_named_outputs(outputs, v_scope.name, net)
     return net
 
 @slim.add_arg_scope
@@ -45,7 +43,6 @@ def _dense_block(inputs, number_layers, number_filters, growth_rate,
             net = _block(net, growth_rate, scope='conv_block'+str(branch))
             if grow_num_filters:
                 number_filters += growth_rate
-        net = slim.utils.collect_named_outputs(outputs, v_scope.name, net)
 
     return net, number_filters
 
@@ -58,7 +55,6 @@ def _transition_block(inputs, number_filters, compression=1.0,
         net = inputs
         net = _conv(net, num_filters, 1, scope='blk')
         net = slim.avg_pool2d(net, 2)
-        net = slim.utils.collect_named_outputs(outputs, sc.name, net)
     return net, num_filters
 
 def densenet(inputs,
@@ -91,7 +87,6 @@ def densenet(inputs,
                          _dense_block, _transition_block]), \
                                     slim.arg_scope([_conv], dropout=dropout_rate):
             net = inputs
-            print("inputs:"+str(net))
         # initial convolution
       
             net = slim.conv2d(net, number_filters, 7, stride=2, scope='conv1')
@@ -126,6 +121,7 @@ def densenet(inputs,
                             biases_initializer=tf.zeros_initializer(),
                             scope='logits')
             end_points = slim.utils.convert_collection_to_dict(end_points_collection)
+            net = tf.squeeze(net, axis=[1,2], name="Squeeze")
             if num_classes is not None:
                 end_points['Predictions'] = tf.nn.sigmoid(net, name='Predictions')
             return net, end_points

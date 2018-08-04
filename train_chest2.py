@@ -93,13 +93,11 @@ def run():
 
         #Create the model inference
         with slim.arg_scope(densenet.densenet_arg_scope(is_training=True)):
-            logits, _ = densenet.densenet121(images, num_classes = len(labels_to_name), is_training = True)
+            logits, end_points = densenet.densenet121(images, num_classes = len(labels_to_name), is_training = True)
             
         excluding = ['densenet121/final_block', 'densenet121/logits','densenet121/Predictions']   
-        variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
-        print("logits"+str(logits))
-        logits = tf.squeeze(logits)
-        pred = tf.nn.sigmoid(logits)
+        variables_to_restore = slim.get_variables_to_restore(exclude=excluding)        
+        pred = end_points['Predictions']
 
         #Defining losses and regulization ops:
         with tf.name_scope("loss_op"):
