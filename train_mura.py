@@ -180,6 +180,7 @@ def run():
                     summy_writer.add_summary(merge,i)
                 if i%num_batches_per_epoch==0:
                     #TODO: Add os.path.join to every directory variable in a func
+                    saver_a.save(sess,os.path.join(train_dir,"model"), global_step=global_step)
         txt_file.close()
         
 if __name__ == '__main__':
