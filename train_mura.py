@@ -104,7 +104,8 @@ def run():
     #Define Optimizer with decay learning rate:
         with tf.name_scope("optimizer"):
             optimizer = tf.train.AdamOptimizer(learning_rate = lr)      
-            train_op = optimizer.minimize(total_loss, global_step=global_step)
+            train_op = slim.learning.create_train_op(total_loss,optimizer,
+                                                        update_ops=tf.get_collection(tf.GraphKeys.UPDATE_OPS))
         #State the metrics that you want to predict. We get a predictions that is not one_hot_encoded.
         #FIXME: Replace classifier function (sigmoid / softmax)
         with tf.name_scope("metrics"):
@@ -151,7 +152,6 @@ def run():
         #deFINE A ConfigProto to allow gpu device
         #Define a coordinator for running the queues
         coord = tf.train.Coordinator()
-        print(tf.get_collection(tf.GraphKeys.UPDATE_OPS))
         #Definine checkpoint path for restoring the model
         totalloss = 0.0
         i = 1
