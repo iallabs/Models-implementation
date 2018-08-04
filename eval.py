@@ -14,7 +14,7 @@ slim = tf.contrib.slim
 
 
 #=======Dataset Informations=======#
-dataset_dir = "D:/MURA-v1.1/"
+dataset_dir = "C:/Users/Lenovo/Documents/MURA-v1.1"
 main_dir = os.getcwd()
 log_dir= os.path.join(main_dir, os.path.join("train","log_eval"))
 file_pattern = "MURA_%s_*.tfrecord"

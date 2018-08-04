@@ -163,8 +163,7 @@ def run():
             if not (ckpt_state and ckpt_state.model_checkpoint_path):
                 saver_a.save(sess,os.path.join(train_dir,"model"), global_step=global_step,latest_filename="checkpoint")
             while i!= max_step:
-                sess.run(train_op)
-                i,i_name,a,b,c,tmp_loss, tmp_update= sess.run([global_step,img_names,labels,oh_labels,
+                _,i,i_name,a,b,c,tmp_loss, tmp_update= sess.run([train_op,global_step,img_names,labels,oh_labels,
                                                                 pred,total_loss,
                                                                 names_to_updates])
                 txt_file.write("*****step i***** " + str(i) + "\n" +"labels : "+ str(a) +\
@@ -173,14 +172,14 @@ def run():
                 totalloss +=tmp_loss
                 format_str = ('\r%s: step %d,  avg_loss=%.3f, loss = %.2f, streaming_acc=%.2f')
                 sys.stdout.write(format_str % (datetime.time(), i, totalloss/i, tmp_loss, tmp_update['Accuracy']))
+                if i==max_step-1:
+                    coord.request_stop()        
+                    coord.join()
                 if i%100 == 1:
                     merge = sess.run(my_summary_op)
                     summy_writer.add_summary(merge,i)
                 if i%num_batches_per_epoch==0:
                     #TODO: Add os.path.join to every directory variable in a func
-                    saver_a.save(sess,os.path.join(train_dir,"model"), global_step=i)
-            coord.request_stop()        
-            coord.join()
         txt_file.close()
         
 if __name__ == '__main__':
