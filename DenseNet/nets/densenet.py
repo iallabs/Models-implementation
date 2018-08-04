@@ -162,7 +162,6 @@ def densenet_arg_scope(weight_decay=1e-3,
                          biases_initializer=None):
             with slim.arg_scope([slim.batch_norm],
                           scale=True,
-                          update_collections=None,# Make sure updates happen automatically
                           decay=batch_norm_decay,
                           epsilon=batch_norm_epsilon) as scope:
                 return scope
