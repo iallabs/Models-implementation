@@ -164,10 +164,11 @@ def run():
         #Define a coordinator for running the queues
         coord = tf.train.Coordinator()
         config = tf.ConfigProto()
+        config.gpu_options.per_process_gpu_memory_fraction=1
         #Definine checkpoint path for restoring the model
         totalloss=0.0
         i = 1
-        with tf.Session(graph=graph) as sess:
+        with tf.Session(graph=graph, config=config) as sess:
             sess.run([tf.global_variables_initializer(),tf.local_variables_initializer()])
             tf.train.start_queue_runners(sess, coord)
             saver_b.restore(sess,ckpt)
