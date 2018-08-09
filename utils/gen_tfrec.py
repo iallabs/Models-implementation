@@ -54,12 +54,16 @@ def load_batch(dataset, batch_size, height, width, num_epochs, is_training=True,
     """
     dataset = dataset.repeat(num_epochs)
     def process_fn(example):
+        tf.summary.image("final_image", example['image/encoded'])
+        example['image/encoded'].set_shape([None,None,3])
         example['image/encoded']= inception_preprocessing.preprocess_image(example['image/encoded'], height, width, is_training)
         return example
     
     dataset = dataset.map(process_fn)
+    dataset = dataset.repeat(num_epochs)
     dataset = dataset.batch(batch_size)
     parsed_batch = dataset.make_one_shot_iterator().get_next()
+    tf.summary.image("final_image", parsed_batch['image/encoded'])
 
     return parsed_batch['image/encoded'], parsed_batch['image/filename'], parsed_batch['image/class/one_hot'], parsed_batch['image/class/label']
 

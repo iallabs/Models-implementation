@@ -2,7 +2,8 @@ import tensorflow as tf
 
 
 from tensorflow.python.platform import tf_logging as logging
-
+from research.slim.nets import inception_resnet_v2
+from research.slim.preprocessing import inception_preprocessing
 import DenseNet.nets.densenet as densenet
 
 from utils.gen_tfrec import load_batch, get_dataset, load_batch_dense
@@ -32,7 +33,7 @@ gpu_p = FLAGS.gpu_p
 #Emplacement du checkpoint file
 checkpoint_file= FLAGS.ckpt
 
-image_size = 224
+image_size = inception_resnet_v2.default_image_size
 #Nombre de classes à prédire
 file_pattern = "chest_%s_*.tfrecord"
 file_pattern_for_counting = "chest"
@@ -83,7 +84,7 @@ def run():
             dataset, num_samples= get_dataset("train", dataset_dir, file_pattern=file_pattern,
                                     file_pattern_for_counting=file_pattern_for_counting, labels_to_name=labels_to_name)
         with tf.name_scope("load_data"):
-            images,img_names, oh_labels, labels = load_batch_dense(dataset, batch_size, image_size, image_size, num_epochs,
+            images,img_names, oh_labels, labels = load_batch(dataset, batch_size, image_size, image_size, num_epochs,
                                                             shuffle=True, is_training=True)
 
         #Calcul of batches/epoch, number of steps after decay learning rate
@@ -93,12 +94,13 @@ def run():
 
         #Create the model inference
         with slim.arg_scope([slim.model_variable, slim.variable], device='/cpu:0'):
-            with slim.arg_scope(densenet.densenet_arg_scope(is_training=True)):
-                logits, end_points = densenet.densenet121(images, num_classes = len(labels_to_name), is_training = True)
+            with slim.arg_scope(inception_resnet_v2.inception_resnet_v2_arg_scope(weight_decay=0.001, batch_norm_decay=0.9)):
+                logits, end_points = inception_resnet_v2.inception_resnet_v2(images, num_classes = len(labels_to_name),
+                                                                             is_training = True, create_aux_logits=False)
             
-        excluding = ['densenet121/final_block', 'densenet121/logits','densenet121/Predictions']   
+        excluding = ['InceptionResnetV2/Logits']   
         variables_to_restore = slim.get_variables_to_restore(exclude=excluding)        
-        pred = end_points['Predictions']
+        pred = tf.nn.sigmoid(logits)
 
         #Defining losses and regulization ops:
         with tf.name_scope("loss_op"):
