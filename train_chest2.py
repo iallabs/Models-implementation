@@ -5,6 +5,7 @@ from tensorflow.python.platform import tf_logging as logging
 
 import DenseNet.nets.densenet as densenet
 
+import research.slim.nets.mobilenet.mobilenet_v2 as mobilenet_v2
 from utils.gen_tfrec import load_batch, get_dataset, load_batch_dense
 
 import os
@@ -92,11 +93,12 @@ def run():
         decay_steps = int(num_epochs_before_decay * num_steps_per_epoch)
 
         #Create the model inference
-        with slim.arg_scope([slim.model_variable, slim.variable], device='/cpu:0'):
-            with slim.arg_scope(densenet.densenet_arg_scope(is_training=True, weight_decay=1e-4)):
-                logits, end_points = densenet.densenet121(images, num_classes = len(labels_to_name), is_training = True)
+        with slim.arg_scope(mobilenet_v2.training_scope(is_training=True, weight_decay=0.001, stddev=1., bn_decay=0.9)):
+            #TODO: Check mobilenet_v1 module, var "excluding
+            logits, _ = mobilenet_v2.mobilenet(images,depth_multiplier=1.4, num_classes = len(labels_to_name))
             
-        excluding = ['densenet121/final_block', 'densenet121/logits','densenet121/Predictions']   
+        excluding = ['MobilenetV2/Logits']
+
         variables_to_restore = slim.get_variables_to_restore(exclude=excluding)        
         pred = end_points['Predictions']
 
