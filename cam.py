@@ -33,4 +33,7 @@ embedding = end_points["layer_18/output"]
 pred = tf.argmax(tf.nn.softmax(logits))
 one_hot = tf.sparse_to_dense(pred, [len(labels_to_name)], 1.0)
 signal = tf.mul(end_points["global_pool"], one_hot)
+loss = tf.reduce_mean(signal)
+grads = tf.gradients(loss, conv_layer)[0]
+
 print(end_points)
