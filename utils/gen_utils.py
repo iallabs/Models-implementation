@@ -88,7 +88,7 @@ def load_batch(dataset, batch_size, height, width, num_epochs, is_training=True,
     image = inception_preprocessing.preprocess_image(raw_image, height, width, is_training)
 
 
-    one_hot_labels = tf.cast(tf.one_hot(label, depth=dataset.num_classes, on_value=1.0, off_value = 0.0), tf.int64)
+    one_hot_labels = tf.cast(tf.one_hot(label, depth=dataset.num_classes, on_value=1.0, off_value = 0.0), tf.int32)
 
     #As for the raw images, we just do a simple reshape to batch it up
     raw_image = tf.expand_dims(raw_image, 0)
@@ -134,7 +134,7 @@ def load_batch_dense(dataset, batch_size, height, width, num_epochs=None, is_tra
     image = dp.preprocess_image(raw_image, height, width, is_training)
     
 
-    one_hot_labels = tf.cast(tf.one_hot(label, depth=dataset.num_classes, on_value=1.0, off_value=0.0), tf.int64)
+    one_hot_labels = tf.cast(tf.one_hot(label, depth=dataset.num_classes, on_value=1.0, off_value=0.0), tf.int32)
 
     #As for the raw images, we just do a simple reshape to batch it up
     raw_image = tf.expand_dims(raw_image, 0)

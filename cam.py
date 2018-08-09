@@ -28,4 +28,7 @@ images_bis = tf.expand_dims(image_a,0)
 with slim.arg_scope(mobilenet_v2.training_scope(is_training=True)):
     #TODO: Check mobilenet_v1 module, var "excluding
     logits, end_points = mobilenet_v2.mobilenet(images_bis,depth_multiplier=1.4, num_classes = len(labels_to_name))
+
+embedding = end_points["layer_18/output"]
+
 print(end_points)
