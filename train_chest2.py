@@ -100,7 +100,7 @@ def run():
         excluding = ['MobilenetV2/Logits']
 
         variables_to_restore = slim.get_variables_to_restore(exclude=excluding)        
-        pred = end_points['Predictions']
+        pred = tf.nn.sigmoid(logits)
 
         #Defining losses and regulization ops:
         with tf.name_scope("loss_op"):

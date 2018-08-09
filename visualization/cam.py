@@ -25,3 +25,6 @@ image = tf.image.convert_image_dtype(image, tf.float32)
 image.set_shape([None,None,3])
 image_a = dp.preprocess_image(image, 224,224, is_training=False)
 images_bis = tf.expand_dims(image_a,0)
+with slim.arg_scope(mobilenet_v2.training_scope(is_training=True)):
+    #TODO: Check mobilenet_v1 module, var "excluding
+    logits, end_points = mobilenet_v2.mobilenet(images_bis,depth_multiplier=1.4, num_classes = len(labels_to_name))
