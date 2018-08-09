@@ -62,7 +62,7 @@ labels_to_name = {
 #Nombre d'époques pour l'entraînement
 num_epochs = 100
 #State your batch size
-batch_size = 24
+batch_size = 48
 #Learning rate information and configuration (Up to you to experiment)
 initial_learning_rate = 6e-4
 learning_rate_decay_factor = 0.95
@@ -164,7 +164,7 @@ def run():
         #Define a coordinator for running the queues
         coord = tf.train.Coordinator()
         config = tf.ConfigProto()
-        config.gpu_options.per_process_gpu_memory_fraction=1
+        config.gpu_options.allow_growth=True
         #Definine checkpoint path for restoring the model
         totalloss=0.0
         i = 1
