@@ -33,7 +33,7 @@ gpu_p = FLAGS.gpu_p
 #Emplacement du checkpoint file
 checkpoint_file= FLAGS.ckpt
 
-image_size = inception_resnet_v2.default_image_size
+image_size = 299
 #Nombre de classes à prédire
 file_pattern = "chest_%s_*.tfrecord"
 file_pattern_for_counting = "chest"
@@ -95,7 +95,7 @@ def run():
         #Create the model inference
         with slim.arg_scope([slim.model_variable, slim.variable], device='/cpu:0'):
             with slim.arg_scope(inception_resnet_v2.inception_resnet_v2_arg_scope(weight_decay=0.001, batch_norm_decay=0.9)):
-                logits, end_points = inception_resnet_v2.inception_resnet_v2(images, num_classes = len(labels_to_name),
+                logits, _ = inception_resnet_v2.inception_resnet_v2(images, num_classes = len(labels_to_name),
                                                                              is_training = True, create_aux_logits=False)
             
         excluding = ['InceptionResnetV2/Logits']   
