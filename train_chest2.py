@@ -92,8 +92,9 @@ def run():
         decay_steps = int(num_epochs_before_decay * num_steps_per_epoch)
 
         #Create the model inference
-        with slim.arg_scope(densenet.densenet_arg_scope(is_training=True)):
-            logits, end_points = densenet.densenet121(images, num_classes = len(labels_to_name), is_training = True)
+        with slim.arg_scope([slim.model_variable, slim.variable], device='/cpu:0'):
+            with slim.arg_scope(densenet.densenet_arg_scope(is_training=True)):
+                logits, end_points = densenet.densenet121(images, num_classes = len(labels_to_name), is_training = True)
             
         excluding = ['densenet121/final_block', 'densenet121/logits','densenet121/Predictions']   
         variables_to_restore = slim.get_variables_to_restore(exclude=excluding)        
