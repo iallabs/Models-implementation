@@ -10,10 +10,10 @@ _R_MEAN = 0.485
 _G_MEAN = 0.457
 _B_MEAN = 0.407
 
-#ImageNet standard deviation (écart-type)
-_R_STD = 0.187
-_G_STD = 0.187
-_B_STD = 0.187
+#ImageNet standard deviation (écart-type)0.229, 0.224, 0.225
+_R_STD = 0.229
+_G_STD = 0.224
+_B_STD = 0.225
 
 _RESIZE_SIDE_MIN = 256
 _RESIZE_SIDE_MAX = 512

@@ -62,7 +62,7 @@ labels_to_name = {
 #Nombre d'époques pour l'entraînement
 num_epochs = 100
 #State your batch size
-batch_size = 48
+batch_size = 32
 #Learning rate information and configuration (Up to you to experiment)
 initial_learning_rate = 6e-4
 learning_rate_decay_factor = 0.95

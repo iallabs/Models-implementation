@@ -14,7 +14,7 @@ slim = tf.contrib.slim
 
 
 #=======Dataset Informations=======#
-dataset_dir = "C:/Users/Lenovo/Documents/MURA-v1.1"
+dataset_dir = "D:/MURA-v1.1"
 main_dir = os.getcwd()
 log_dir= os.path.join(main_dir, os.path.join("train","log_eval"))
 file_pattern = "MURA_%s_*.tfrecord"
@@ -22,7 +22,8 @@ file_pattern_for_counting = "MURA"
 batch_size = 8
 image_size = 224
 labels_to_name= {0:"negative", 1:"positive"}
-train_dir = os.path.join(main_dir,os.path.join("train", "training"))
+train_dir="D:/ckpt-mura.05.08.2018"
+#train_dir = os.path.join(main_dir,os.path.join("train", "training"))
 #=======Training Informations======#
 #Nombre d'époques pour l'entraînement
 def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counting, labels_to_name, batch_size, image_size):
