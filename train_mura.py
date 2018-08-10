@@ -65,14 +65,14 @@ def run():
     tf.logging.set_verbosity(tf.logging.INFO)
     with tf.Graph().as_default() as graph:
         with tf.name_scope("dataset"):
-            dataset= get_dataset("train", dataset_dir, file_pattern=file_pattern,
+            dataset, num_samples= get_dataset("train", dataset_dir, file_pattern=file_pattern,
                                     file_pattern_for_counting=file_pattern_for_counting, labels_to_name=labels_to_name)
         with tf.name_scope("load_data"):
             images,img_names, oh_labels, labels = load_batch_dense(dataset, batch_size, image_size, image_size, num_epochs,
                                                             shuffle=True, is_training=True)
 
         #Calcul of batches/epoch, number of steps after decay learning rate
-        num_batches_per_epoch = int(dataset.num_samples / batch_size)
+        num_batches_per_epoch = int(num_samples / batch_size)
         num_steps_per_epoch = num_batches_per_epoch #Because one step is one batch processed
         decay_steps = int(num_epochs_before_decay * num_steps_per_epoch)
 
