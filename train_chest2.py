@@ -4,6 +4,7 @@ import tensorflow as tf
 from tensorflow.python.platform import tf_logging as logging
 
 import DenseNet.nets.densenet as densenet
+import research.slim.nets.mobilenet.mobilenet_v2 as mobilenet_v2
 
 from utils.gen_tfrec import load_batch, get_dataset, load_batch_dense
 
