@@ -30,10 +30,10 @@ def get_dataset(phase_name, dataset_dir, file_pattern, file_pattern_for_counting
         feature = {
             'image/encoded':tf.FixedLenFeature((), tf.string),
             'image/filename':tf.FixedLenFeature((), tf.string),
-            'image/height': tf.FixedLenFeature((), tf.int64),
-            'image/width': tf.FixedLenFeature((), tf.int64),
+            'image/height': tf.FixedLenFeature((), tf.int32),
+            'image/width': tf.FixedLenFeature((), tf.int32),
             'image/format': tf.FixedLenFeature((), tf.string, default_value='png'),
-            'image/class/label':tf.FixedLenFeature((), tf.int64),
+            'image/class/label':tf.FixedLenFeature((), tf.int32),
         }
         parsed_example = tf.parse_single_example(example, feature)
         parsed_example['image/encoded'] = tf.image.decode_image(parsed_example['image/encoded'], channels=3)

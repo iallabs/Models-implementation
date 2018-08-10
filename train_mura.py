@@ -2,9 +2,9 @@ import tensorflow as tf
 
 
 from tensorflow.python.platform import tf_logging as logging
-
+import DenseNet.nets.densenet as densenet
 import research.slim.nets.mobilenet.mobilenet_v2 as mobilenet_v2
-from utils.gen_utils import load_batch, get_dataset, load_batch_dense
+from utils.gen_tfrec import load_batch, get_dataset, load_batch_dense
 
 import os
 import sys
@@ -68,7 +68,7 @@ def run():
             dataset= get_dataset("train", dataset_dir, file_pattern=file_pattern,
                                     file_pattern_for_counting=file_pattern_for_counting, labels_to_name=labels_to_name)
         with tf.name_scope("load_data"):
-            images,img_names,_, oh_labels, labels = load_batch_dense(dataset, batch_size, image_size, image_size, num_epochs,
+            images,img_names, oh_labels, labels = load_batch_dense(dataset, batch_size, image_size, image_size, num_epochs,
                                                             shuffle=True, is_training=True)
 
         #Calcul of batches/epoch, number of steps after decay learning rate
@@ -77,11 +77,11 @@ def run():
         decay_steps = int(num_epochs_before_decay * num_steps_per_epoch)
 
         #Create the model inference
-        with slim.arg_scope(mobilenet_v2.training_scope(is_training=True, weight_decay=0.003, stddev=1., bn_decay=0.99)):
+        with slim.arg_scope(densenet.densenet_arg_scope(is_training=True, weight_decay=0.003, batch_norm_decay=0.9)):
             #TODO: Check mobilenet_v1 module, var "excluding
-            logits, _ = mobilenet_v2.mobilenet(images,depth_multiplier=1.4, num_classes = len(labels_to_name))
+            logits, _ = densenet.densenet121(images, num_classes = len(labels_to_name), is_training=True)
             
-        excluding = ['MobilenetV2/Logits']   
+        excluding = ['densenet121/logits']   
         variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
         pred = tf.nn.softmax(logits)
 
