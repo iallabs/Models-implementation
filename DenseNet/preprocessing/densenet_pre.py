@@ -5,7 +5,7 @@ import tensorflow as tf
 
 
 slim = tf.contrib.slim
-#ImageNet RGB mean values (moyenne)
+#ImageNet RGB mean values (moyenne)0.485, 0.457,0.407
 _R_MEAN = 0.485
 _G_MEAN = 0.457
 _B_MEAN = 0.407
