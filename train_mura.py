@@ -46,7 +46,7 @@ labels_to_name = {
 #Nombre d'époques pour l'entraînement
 num_epochs = 100
 #State your batch size
-batch_size = 16
+batch_size = 32
 #Learning rate information and configuration (Up to you to experiment)
 initial_learning_rate = 1e-4
 learning_rate_decay_factor = 0.95
@@ -94,16 +94,16 @@ def run():
         #Create the global step for monitoring the learning_rate and training:
         global_step = tf.train.get_or_create_global_step()
 
-        with tf.name_scope("learning_rate"):    
+        """with tf.name_scope("learning_rate"):    
             lr = tf.train.exponential_decay(learning_rate=initial_learning_rate,
                                     global_step=global_step,
                                     decay_steps=decay_steps,
                                     decay_rate = learning_rate_decay_factor,
-                                    staircase=True)
+                                    staircase=True)"""
 
     #Define Optimizer with decay learning rate:
         with tf.name_scope("optimizer"):
-            optimizer = tf.train.AdamOptimizer(learning_rate = lr)      
+            optimizer = tf.train.AdamOptimizer(learning_rate = initial_learning_rate)      
             train_op = slim.learning.create_train_op(total_loss,optimizer,
                                                         update_ops=tf.get_collection(tf.GraphKeys.UPDATE_OPS))
         #State the metrics that you want to predict. We get a predictions that is not one_hot_encoded.
