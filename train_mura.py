@@ -125,7 +125,7 @@ def run():
             # summaries to monitor and group them into one summary op.#
             tf.summary.scalar('accuracy_perso', accuracy)
             tf.summary.scalar('losses/Total_Loss', total_loss)
-            tf.summary.scalar('learning_rate', lr)
+            """tf.summary.scalar('learning_rate', lr)"""
             tf.summary.scalar('global_step', global_step)
             tf.summary.histogram('proba_perso',pred)        
             #Create the train_op#.
