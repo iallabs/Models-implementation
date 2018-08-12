@@ -46,11 +46,11 @@ labels_to_name = {
 #Nombre d'époques pour l'entraînement
 num_epochs = 100
 #State your batch size
-batch_size = 256
+batch_size = 32
 #Learning rate information and configuration (Up to you to experiment)
 initial_learning_rate = 1e-4
 learning_rate_decay_factor = 0.95
-num_epochs_before_decay = 2
+num_epochs_before_decay = 1
 
 def run():
     #Create log_dir:
@@ -77,7 +77,7 @@ def run():
         decay_steps = int(num_epochs_before_decay * num_steps_per_epoch)
 
         #Create the model inference
-        with slim.arg_scope(densenet.densenet_arg_scope(is_training=True, weight_decay=0.003, batch_norm_decay=0.9)):
+        with slim.arg_scope(densenet.densenet_arg_scope(is_training=True, weight_decay=4e-4, batch_norm_decay=0.95)):
             #TODO: Check mobilenet_v1 module, var "excluding
             logits, _ = densenet.densenet121(images, num_classes = len(labels_to_name), is_training=True)
             
@@ -94,12 +94,12 @@ def run():
         #Create the global step for monitoring the learning_rate and training:
         global_step = tf.train.get_or_create_global_step()
 
-        """with tf.name_scope("learning_rate"):    
+        with tf.name_scope("learning_rate"):    
             lr = tf.train.exponential_decay(learning_rate=initial_learning_rate,
                                     global_step=global_step,
                                     decay_steps=decay_steps,
                                     decay_rate = learning_rate_decay_factor,
-                                    staircase=True)"""
+                                    staircase=True)
 
     #Define Optimizer with decay learning rate:
         with tf.name_scope("optimizer"):
@@ -125,7 +125,7 @@ def run():
             # summaries to monitor and group them into one summary op.#
             tf.summary.scalar('accuracy_perso', accuracy)
             tf.summary.scalar('losses/Total_Loss', total_loss)
-            """tf.summary.scalar('learning_rate', lr)"""
+            tf.summary.scalar('learning_rate', lr)
             tf.summary.scalar('global_step', global_step)
             tf.summary.histogram('proba_perso',pred)        
             #Create the train_op#.
@@ -150,15 +150,12 @@ def run():
         #Define a Summary Writer:
         summy_writer = tf.summary.FileWriter(logdir=summary_dir, graph=graph)
         #deFINE A ConfigProto to allow gpu device
-        #Define a coordinator for running the queues
-        coord = tf.train.Coordinator()
         #Definine checkpoint path for restoring the model
         totalloss = 0.0
-        i = 1
+        i = 0
         with tf.Session(graph=graph) as sess:
             sess.run([tf.global_variables_initializer(),
                         tf.local_variables_initializer()])
-            tf.train.start_queue_runners(sess, coord)
             saver_b.restore(sess,ckpt)
             if not (ckpt_state and ckpt_state.model_checkpoint_path):
                 saver_a.save(sess,os.path.join(train_dir,"model"), global_step=global_step,latest_filename="checkpoint")
@@ -171,10 +168,10 @@ def run():
                                 "\n"+"predictions : "+str(c)+"\n"+"images names:"+str(i_name)+"\n")
                 totalloss +=tmp_loss
                 format_str = ('\r%s: step %d,  avg_loss=%.3f, loss = %.2f, streaming_acc=%.2f')
-                sys.stdout.write(format_str % (datetime.time(), i, totalloss/i, tmp_loss, tmp_update['Accuracy']))
+                sys.stdout.write(format_str % (datetime.time(), i, totalloss/i+1, tmp_loss, tmp_update['Accuracy']))
                 if i==max_step-1:
-                    coord.request_stop()        
-                    coord.join()
+                    saver_a.save(sess,os.path.join(train_dir,"model"), global_step=global_step)
+                    break
                 if i%100 == 1:
                     merge = sess.run(my_summary_op)
                     summy_writer.add_summary(merge,i)

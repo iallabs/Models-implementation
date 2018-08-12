@@ -48,7 +48,7 @@ def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counti
 
 
         #Create the model inference
-        with slim.arg_scope(mobilenet_v2.training_scope(is_training=True)):
+        with slim.arg_scope(mobilenet_v2.training_scope(is_training=False)):
             #TODO: Check mobilenet_v1 module, var "excluding
             logits, end_points = mobilenet_v2.mobilenet(images,depth_multiplier=1.4, num_classes = len(labels_to_name))
         end_points['Predictions_1'] = tf.nn.softmax(logits)
