@@ -4,6 +4,7 @@ import tensorflow as tf
 from tensorflow.python.platform import tf_logging as logging
 import DenseNet.nets.densenet as densenet
 import research.slim.nets.mobilenet.mobilenet_v2 as mobilenet_v2
+import research.slim.nets.inception_resnet_v2 as inception
 from utils.gen_tfrec import load_batch, get_dataset, load_batch_dense
 
 import os
@@ -77,11 +78,11 @@ def run():
         decay_steps = int(num_epochs_before_decay * num_steps_per_epoch)
 
         #Create the model inference
-        with slim.arg_scope(densenet.densenet_arg_scope(is_training=True, weight_decay=4e-4, batch_norm_decay=0.95)):
+        with slim.arg_scope(inception.inception_resnet_v2_arg_scope(weight_decay=5e-4,batch_norm_decay=0.97)):
             #TODO: Check mobilenet_v1 module, var "excluding
-            logits, _ = densenet.densenet121(images, num_classes = len(labels_to_name), is_training=True)
+            logits, _ = inception.inception_resnet_v2(images, num_classes = len(labels_to_name), is_training=True)
             
-        excluding = ['densenet121/logits']   
+        excluding = ['InceptionResnetV2/Logits', 'InceptionResnetV2/Dropout']   
         variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
         pred = tf.nn.softmax(logits)
 
@@ -133,7 +134,6 @@ def run():
             my_summary_op = tf.summary.merge_all()
             #Define max steps:
         max_step = num_epochs*num_steps_per_epoch
-        print(max_step)
         #NOTE: We define in this section the properties of the session to run (saver, summaries)
         ckpt_state = tf.train.get_checkpoint_state(train_dir)
         if ckpt_state and ckpt_state.model_checkpoint_path:
@@ -146,7 +146,6 @@ def run():
         variables_to_save = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
         saver_a = tf.train.Saver(variables_to_save,max_to_keep=num_epochs, name="Model_Saver")
         #Define a txt file to write inference results:
-        txt_file = open("Output.txt", "w")
         #Define a Summary Writer:
         summy_writer = tf.summary.FileWriter(logdir=summary_dir, graph=graph)
         #deFINE A ConfigProto to allow gpu device
@@ -160,12 +159,9 @@ def run():
             if not (ckpt_state and ckpt_state.model_checkpoint_path):
                 saver_a.save(sess,os.path.join(train_dir,"model"), global_step=global_step,latest_filename="checkpoint")
             while i!= max_step:
-                _,i,i_name,a,b,c,tmp_loss, tmp_update= sess.run([train_op,global_step,img_names,labels,oh_labels,
-                                                                pred,total_loss,
+                _,i,tmp_loss, tmp_update= sess.run([train_op,global_step,total_loss,
                                                                 names_to_updates])
-                txt_file.write("*****step i***** " + str(i) + "\n" +"labels : "+ str(a) +\
-                                "\n" + "oh_labels : "+str(b) +\
-                                "\n"+"predictions : "+str(c)+"\n"+"images names:"+str(i_name)+"\n")
+
                 totalloss +=tmp_loss
                 format_str = ('\r%s: step %d,  avg_loss=%.3f, loss = %.2f, streaming_acc=%.2f')
                 sys.stdout.write(format_str % (datetime.time(), i, totalloss/i+1, tmp_loss, tmp_update['Accuracy']))
@@ -178,7 +174,6 @@ def run():
                 if i%num_batches_per_epoch==0:
                     #TODO: Add os.path.join to every directory variable in a func
                     saver_a.save(sess,os.path.join(train_dir,"model"), global_step=global_step)
-        txt_file.close()
         
 if __name__ == '__main__':
     run()

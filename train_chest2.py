@@ -93,7 +93,7 @@ def run():
         decay_steps = int(num_epochs_before_decay * num_steps_per_epoch)
 
         #Create the model inference
-        with slim.arg_scope(mobilenet_v2.training_scope(is_training=True, weight_decay=0.001, stddev=1., bn_decay=0.9)):
+        with slim.arg_scope(mobilenet_v2.training_scope(is_training=True, weight_decay=0.001, stddev=1., bn_decay=0.97)):
             #TODO: Check mobilenet_v1 module, var "excluding
             logits, _ = mobilenet_v2.mobilenet(images,depth_multiplier=1.4, num_classes = len(labels_to_name))
             
@@ -160,7 +160,6 @@ def run():
             saver_b = tf.train.Saver(variables_to_restore)
         saver_a = tf.train.Saver(max_to_keep=None)
         #Define a txt file to write inference results:
-        txt_file = open("Output.txt", "w")
         #Define a Summary Writer:
         summy_writer = tf.summary.FileWriter(logdir=summary_dir, graph=graph)
         #Define a coordinator for running the queues
@@ -174,9 +173,7 @@ def run():
             saver_b.restore(sess,ckpt)
             saver_a.save(sess,os.path.join(train_dir,"model"), global_step=i,latest_filename="checkpoint")
             while i!= max_step:
-                _,i,i_name,a,b,c,tmp_loss, tmp_update= sess.run([train_op,global_step,img_names,labels,oh_labels,pred,total_loss, names_to_updates])
-                txt_file.write("*****step i***** " + str(i) + "\n" +"labels : "+ str(a) + "\n" + "oh_labels : "+str(b) +\
-                            "\n"+"predictions : "+str(c)+"\n"+"images names:"+str(i_name)+"\n")
+                _,i,tmp_loss, tmp_update= sess.run([train_op,global_step,total_loss, names_to_updates])
                 totalloss +=tmp_loss
                 format_str = ('\r%s: step %d,  avg_loss=%.3f, loss = %.2f, streaming_acc=%.2f')
                 sys.stdout.write(format_str % (datetime.time(), i, totalloss/i, tmp_loss, tmp_update['Accuracy']))
@@ -185,6 +182,5 @@ def run():
                     summy_writer.add_summary(merge,i)
                 if i%num_batches_per_epoch==0:
                     saver_a.save(sess,os.path.join(train_dir,"model"), global_step=i)
-        txt_file.close()
 if __name__ == '__main__':
     run()

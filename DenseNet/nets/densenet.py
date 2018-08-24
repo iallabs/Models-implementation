@@ -97,14 +97,12 @@ def densenet(inputs,
         # blocks
 
             for i in range(number_dense_blocks - 1):
-            # dense blocks
-
+                # dense blocks
                 net, number_filters = _dense_block(net, number_layers[i], number_filters,
                                         growth_rate,
                                         scope='dense_block' + str(i+1))
 
-            # Add transition_block
-
+                # Add transition_block
                 net, number_filters = _transition_block(net, number_filters,
                                              compression=compression,
                                              scope='transition_block' + str(i+1))
