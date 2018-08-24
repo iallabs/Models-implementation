@@ -82,7 +82,7 @@ def run():
             #TODO: Check mobilenet_v1 module, var "excluding
             logits, _ = inception.inception_resnet_v2(images, num_classes = len(labels_to_name), is_training=True)
             
-        excluding = ['InceptionResnetV2/Logits', 'InceptionResnetV2/Dropout']   
+        excluding = ['InceptionResnetV2/Logits/Logits', 'InceptionResnetV2/Logits/Dropout']   
         variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
         pred = tf.nn.softmax(logits)
 
