@@ -80,7 +80,7 @@ def run():
         #Create the model inference
         with slim.arg_scope(inception.inception_resnet_v2_arg_scope(weight_decay=5e-4,batch_norm_decay=0.97)):
             #TODO: Check mobilenet_v1 module, var "excluding
-            logits, _ = inception.inception_resnet_v2(images, num_classes = len(labels_to_name), is_training=True)
+            logits, _ = inception.inception_resnet_v2(images, num_classes = len(labels_to_name),create_aux_logits=False, is_training=True)
             
         excluding = ['InceptionResnetV2/Logits/Logits', 'InceptionResnetV2/Logits/Dropout']   
         variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
