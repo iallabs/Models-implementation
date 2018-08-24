@@ -84,7 +84,7 @@ def run():
             dataset, num_samples= get_dataset("train", dataset_dir, file_pattern=file_pattern,
                                     file_pattern_for_counting=file_pattern_for_counting, labels_to_name=labels_to_name)
         with tf.name_scope("load_data"):
-            images,img_names, oh_labels, labels = load_batch_dense(dataset, batch_size, image_size, image_size, num_epochs,
+            images, oh_labels, labels = load_batch_dense(dataset, batch_size, image_size, image_size, num_epochs,
                                                             shuffle=True, is_training=True)
 
         #Calcul of batches/epoch, number of steps after decay learning rate
