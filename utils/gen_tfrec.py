@@ -29,7 +29,6 @@ def get_dataset(phase_name, dataset_dir, file_pattern, file_pattern_for_counting
         #Create the keys_to_features dictionary for the decoder    
         feature = {
             'image/encoded':tf.FixedLenFeature((), tf.string),
-            'image/filename':tf.FixedLenFeature((), tf.string),
             'image/class/label':tf.FixedLenFeature((), tf.int64),
         }
         parsed_example = tf.parse_single_example(example, feature)
@@ -62,7 +61,7 @@ def load_batch(dataset, batch_size, height, width, num_epochs, is_training=True,
     parsed_batch = dataset.make_one_shot_iterator().get_next()
     tf.summary.image("final_image", parsed_batch['image/encoded'])
 
-    return parsed_batch['image/encoded'], parsed_batch['image/filename'], parsed_batch['image/class/one_hot'], parsed_batch['image/class/label']
+    return parsed_batch['image/encoded'], parsed_batch['image/class/one_hot'], parsed_batch['image/class/label']
 
 def load_batch_dense(dataset, batch_size, height, width, num_epochs=None, is_training=True, shuffle=True):
 
@@ -82,4 +81,4 @@ def load_batch_dense(dataset, batch_size, height, width, num_epochs=None, is_tra
     dataset = dataset.batch(batch_size)
     parsed_batch = dataset.make_one_shot_iterator().get_next()
     tf.summary.image("final_image", parsed_batch['image/encoded'])
-    return parsed_batch['image/encoded'], parsed_batch['image/filename'], parsed_batch['image/class/one_hot'], parsed_batch['image/class/label']
+    return parsed_batch['image/encoded'], parsed_batch['image/class/one_hot'], parsed_batch['image/class/label']
