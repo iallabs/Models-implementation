@@ -63,10 +63,10 @@ labels_to_name = {
 #Nombre d'époques pour l'entraînement
 num_epochs = 100
 #State your batch size
-batch_size = 24
+batch_size = 32
 #Learning rate information and configuration (Up to you to experiment)
-initial_learning_rate = 6e-4
-learning_rate_decay_factor = 0.95
+initial_learning_rate = 1e-3
+learning_rate_decay_factor = 0.90
 num_epochs_before_decay = 1
 
 def run():
@@ -84,7 +84,7 @@ def run():
             dataset, num_samples= get_dataset("train", dataset_dir, file_pattern=file_pattern,
                                     file_pattern_for_counting=file_pattern_for_counting, labels_to_name=labels_to_name)
         with tf.name_scope("load_data"):
-            images, oh_labels, labels = load_batch_dense(dataset, batch_size, image_size, image_size, num_epochs,
+            images, oh_labels, labels = load_batch(dataset, batch_size, image_size, image_size, num_epochs,
                                                             shuffle=True, is_training=True)
 
         #Calcul of batches/epoch, number of steps after decay learning rate
@@ -93,7 +93,7 @@ def run():
         decay_steps = int(num_epochs_before_decay * num_steps_per_epoch)
 
         #Create the model inference
-        with slim.arg_scope(mobilenet_v2.training_scope(is_training=True, weight_decay=0.001, stddev=1., bn_decay=0.97)):
+        with slim.arg_scope(mobilenet_v2.training_scope(is_training=True, weight_decay=0.0005, stddev=1., bn_decay=0.97)):
             #TODO: Check mobilenet_v1 module, var "excluding
             logits, _ = mobilenet_v2.mobilenet(images,depth_multiplier=1.4, num_classes = len(labels_to_name))
             
@@ -130,7 +130,8 @@ def run():
             names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({
             'Accuracy': tf.metrics.accuracy(labels, predictions),
             'Precision': tf.metrics.precision(labels, predictions),
-            'Recall': tf.metrics.recall(labels, predictions)
+            'Recall': tf.metrics.recall(labels, predictions),
+            'AUC': tf.metrics.auc(labels,predictions)
             })
             for name, value in names_to_values.items():
                 summary_name = 'train/%s' % name
