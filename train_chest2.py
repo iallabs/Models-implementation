@@ -84,7 +84,7 @@ def run():
             dataset, num_samples= get_dataset("train", dataset_dir, file_pattern=file_pattern,
                                     file_pattern_for_counting=file_pattern_for_counting, labels_to_name=labels_to_name)
         with tf.name_scope("load_data"):
-            images, oh_labels, labels = load_batch(dataset, batch_size, image_size, image_size, num_epochs,
+            images, oh_labels = load_batch(dataset, batch_size, image_size, image_size, num_epochs,
                                                             shuffle=True, is_training=True)
 
         #Calcul of batches/epoch, number of steps after decay learning rate
@@ -127,6 +127,7 @@ def run():
         #FIXME: Replace classifier function (sigmoid / softmax)
         with tf.name_scope("metrics"):
             predictions = tf.argmax(pred, 1)
+            labels = tf.argmax(oh_labels,1)
             names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({
             'Accuracy': tf.metrics.accuracy(labels, predictions),
             'Precision': tf.metrics.precision(labels, predictions),
@@ -165,7 +166,7 @@ def run():
         summy_writer = tf.summary.FileWriter(logdir=summary_dir, graph=graph)
         #Define a coordinator for running the queues
         config = tf.ConfigProto()
-        config.gpu_options.allow_growth=True
+        config.gpu_options.per_process_gpu_memory_fraction=1
         #Definine checkpoint path for restoring the model
         totalloss=0.0
         i = 1
