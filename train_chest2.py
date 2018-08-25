@@ -132,7 +132,6 @@ def run():
             'Accuracy': tf.metrics.accuracy(labels, predictions),
             'Precision': tf.metrics.precision(labels, predictions),
             'Recall': tf.metrics.recall(labels, predictions),
-            'AUC': tf.metrics.auc(labels,predictions)
             })
             for name, value in names_to_values.items():
                 summary_name = 'train/%s' % name
