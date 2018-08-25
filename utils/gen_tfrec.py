@@ -61,7 +61,7 @@ def load_batch(dataset, batch_size, height, width, num_epochs, is_training=True,
     parsed_batch = dataset.make_one_shot_iterator().get_next()
     tf.summary.image("final_image", parsed_batch['image/encoded'])
 
-    return parsed_batch['image/encoded'], parsed_batch['image/class/one_hot'], parsed_batch['image/class/label']
+    return parsed_batch['image/encoded'], parsed_batch['image/class/one_hot']
 
 def load_batch_dense(dataset, batch_size, height, width, num_epochs=None, is_training=True, shuffle=True):
 
