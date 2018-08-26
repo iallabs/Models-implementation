@@ -63,9 +63,9 @@ labels_to_name = {
 #Nombre d'époques pour l'entraînement
 num_epochs = 100
 #State your batch size
-batch_size = 64
+batch_size = 32
 #Learning rate information and configuration (Up to you to experiment)
-initial_learning_rate = 3e-3
+initial_learning_rate = 3e-4
 learning_rate_decay_factor = 0.90
 num_epochs_before_decay = 2
 
@@ -163,13 +163,10 @@ def run():
         #Define a txt file to write inference results:
         #Define a Summary Writer:
         summy_writer = tf.summary.FileWriter(logdir=summary_dir, graph=graph)
-        #Define a coordinator for running the queues
-        config = tf.ConfigProto()
-        config.gpu_options.per_process_gpu_memory_fraction = 1
         #Definine checkpoint path for restoring the model
         totalloss=0.0
         i = 1
-        with tf.Session(graph=graph, config=config) as sess:
+        with tf.Session(graph=graph) as sess:
             sess.run([tf.global_variables_initializer(),tf.local_variables_initializer()])
             saver_b.restore(sess,ckpt)
             saver_a.save(sess,os.path.join(train_dir,"model"), global_step=i,latest_filename="checkpoint")
