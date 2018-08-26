@@ -77,7 +77,6 @@ def load_batch_dense(dataset, batch_size, height, width, num_epochs=None, is_tra
         
         return example
     dataset = dataset.map(process_fn)
-    dataset = dataset.shuffle(1000)
     dataset = dataset.repeat(num_epochs)
     dataset = dataset.batch(batch_size)
     parsed_batch = dataset.make_one_shot_iterator().get_next()
