@@ -63,10 +63,10 @@ labels_to_name = {
 #Nombre d'époques pour l'entraînement
 num_epochs = 100
 #State your batch size
-batch_size = 32
+batch_size = 64
 #Learning rate information and configuration (Up to you to experiment)
-initial_learning_rate = 1e-4
-learning_rate_decay_factor = 0.95
+initial_learning_rate = 3e-3
+learning_rate_decay_factor = 0.90
 num_epochs_before_decay = 2
 
 def run():
@@ -84,7 +84,7 @@ def run():
             dataset, num_samples= get_dataset("train", dataset_dir, file_pattern=file_pattern,
                                     file_pattern_for_counting=file_pattern_for_counting, labels_to_name=labels_to_name)
         with tf.name_scope("load_data"):
-            images, oh_labels = load_batch_dense(dataset, batch_size, image_size, image_size, num_epochs,
+            images, oh_labels = load_batch(dataset, batch_size, image_size, image_size, num_epochs,
                                                             shuffle=True, is_training=True)
 
         #Calcul of batches/epoch, number of steps after decay learning rate
