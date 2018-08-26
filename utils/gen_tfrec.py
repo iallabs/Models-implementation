@@ -77,8 +77,9 @@ def load_batch_dense(dataset, batch_size, height, width, num_epochs=None, is_tra
         
         return example
     dataset = dataset.map(process_fn)
+    dataset = dataset.shuffle(49000)
     dataset = dataset.repeat(num_epochs)
     dataset = dataset.batch(batch_size)
     parsed_batch = dataset.make_one_shot_iterator().get_next()
     tf.summary.image("final_image", parsed_batch['image/encoded'])
-    return parsed_batch['image/encoded'], parsed_batch['image/class/one_hot'], parsed_batch['image/class/label']
+    return parsed_batch['image/encoded'], parsed_batch['image/class/one_hot']

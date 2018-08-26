@@ -63,10 +63,10 @@ labels_to_name = {
 #Nombre d'époques pour l'entraînement
 num_epochs = 100
 #State your batch size
-batch_size = 32
+batch_size = 64
 #Learning rate information and configuration (Up to you to experiment)
-initial_learning_rate = 1e-3
-learning_rate_decay_factor = 0.90
+initial_learning_rate = 9e-4
+learning_rate_decay_factor = 0.95
 num_epochs_before_decay = 1
 
 def run():
