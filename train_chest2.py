@@ -63,11 +63,11 @@ labels_to_name = {
 #Nombre d'époques pour l'entraînement
 num_epochs = 100
 #State your batch size
-batch_size = 64
+batch_size = 32
 #Learning rate information and configuration (Up to you to experiment)
-initial_learning_rate = 9e-4
+initial_learning_rate = 1e-4
 learning_rate_decay_factor = 0.95
-num_epochs_before_decay = 1
+num_epochs_before_decay = 2
 
 def run():
     #Create log_dir:
@@ -165,7 +165,7 @@ def run():
         summy_writer = tf.summary.FileWriter(logdir=summary_dir, graph=graph)
         #Define a coordinator for running the queues
         config = tf.ConfigProto()
-        config.gpu_options.per_process_gpu_memory_fraction=1
+        config.gpu_options.per_process_gpu_memory_fraction=0.99
         #Definine checkpoint path for restoring the model
         totalloss=0.0
         i = 1
