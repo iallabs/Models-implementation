@@ -292,7 +292,6 @@ def preprocess_for_train(image,
     """image = _aspect_preserving_resize(image, resize_side_min)
     image = _central_crop([image], output_height, output_width)[0]"""
     image = tf.image.resize_bilinear(tf.expand_dims(image,0),[output_height, output_width])[0]
-    image = tf.image.convert_image_dtype(image, dtype=tf.float32)
     image = tf.image.random_flip_left_right(image)
     image = _mean_image_subtraction(image, [_R_MEAN,_G_MEAN,_B_MEAN], [_R_STD,_G_STD,_B_STD])
     tf.summary.image("final_image", tf.expand_dims(image,0))
@@ -321,7 +320,6 @@ def preprocess_for_eval(image, output_height, output_width, resize_side):
     """image = _aspect_preserving_resize(image, resize_side)
     image = _central_crop([image], output_height, output_width)[0]"""
     image = tf.image.resize_bilinear(tf.expand_dims(image,0),[output_height, output_width])[0]
-    image = tf.image.convert_image_dtype(image, dtype=tf.float32)
     image = _mean_image_subtraction(image, [_R_MEAN,_G_MEAN,_B_MEAN], [_R_STD,_G_STD,_B_STD])
 
     tf.summary.image("final_image", tf.expand_dims(image,0))
