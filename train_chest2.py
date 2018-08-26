@@ -165,7 +165,7 @@ def run():
         summy_writer = tf.summary.FileWriter(logdir=summary_dir, graph=graph)
         #Define a coordinator for running the queues
         config = tf.ConfigProto()
-        config.gpu_options.per_process_gpu_memory_fraction=0.99
+
         #Definine checkpoint path for restoring the model
         totalloss=0.0
         i = 1
