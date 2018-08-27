@@ -4,18 +4,19 @@ slim = tf.contrib.slim
 import research.slim.nets.mobilenet.mobilenet_v2 as mobilenet_v2
 from research.slim.preprocessing import inception_preprocessing
 import DenseNet.preprocessing.densenet_pre as dp
+import research.slim.nets.inception_resnet_v2 as inception
 
 
 import os
 import numpy as np
 
 
-tf.app.flags.DEFINE_integer('model_version', 1, 'version number of the model.')
+tf.app.flags.DEFINE_integer('model_version', 2, 'version number of the model.')
 tf.app.flags.DEFINE_string('work_dir', '/tmp', 'Working directory.')
 FLAGS = tf.app.flags.FLAGS
 
 checkpoint_dir = os.getcwd()
-checkpoint_file = os.path.join(os.getcwd()+"\\train\\training\\model-54050"
+checkpoint_file = "D:/mura-25.08.2018/model-62101"
 
 image_size = 224
 #Images
@@ -36,7 +37,7 @@ images_bis = tf.expand_dims(image_a,0)
 #Change this line for a different model:
 with slim.arg_scope(inception.inception_resnet_v2_arg_scope()):
             #TODO: Check mobilenet_v1 module, var "excluding
-    logits, _ = inception.inception_resnet_v2(images, num_classes = len(labels_to_name),create_aux_logits=False, is_training=False)
+    logits, _ = inception.inception_resnet_v2(images_bis, num_classes = len(labels_to_name),create_aux_logits=False, is_training=False)
 variables = slim.get_variables_to_restore()
 saver = tf.train.Saver(variables)
 y = tf.nn.softmax(logits)
