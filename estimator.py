@@ -47,7 +47,7 @@ labels_to_name = {
 #Nombre d'époques pour l'entraînement
 num_epochs = 100
 #State your batch size
-batch_size = 16
+batch_size = 32
 #Learning rate information and configuration (Up to you to experiment)
 initial_learning_rate = 1e-4
 learning_rate_decay_factor = 0.95
@@ -78,11 +78,11 @@ def run():
         decay_steps = int(num_epochs_before_decay * num_steps_per_epoch)
 
         #Create the model inference
-        with slim.arg_scope(mobilenet_v2.training_scope(is_training=True, weight_decay=0.0005, stddev=1., bn_decay=0.97)):
+        with slim.arg_scope(inception.inception_resnet_v2_arg_scope(weight_decay=5e-4,batch_norm_decay=0.97)):
             #TODO: Check mobilenet_v1 module, var "excluding
-            logits, _ = mobilenet_v2.mobilenet(images,depth_multiplier=1.0, num_classes = len(labels_to_name))
+            logits, _ = inception.inception_resnet_v2(images, num_classes = len(labels_to_name),create_aux_logits=False, is_training=True)
             
-        excluding = ['MobilenetV2/Logits']   
+        excluding = ['InceptionResnetV2/Logits/Logits', 'InceptionResnetV2/Logits/Dropout']   
         variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
         pred = tf.nn.softmax(logits)
 
@@ -111,7 +111,7 @@ def run():
         #FIXME: Replace classifier function (sigmoid / softmax)
         with tf.name_scope("metrics"):
             predictions = tf.argmax(pred, 1)
-            labels = tf.argmax(oh_labels, 1)
+            labels = tf.argmax(oh_labels,1)
             names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({
             'Accuracy': tf.metrics.accuracy(labels, predictions),
             'Precision': tf.metrics.precision(labels, predictions),
@@ -129,8 +129,7 @@ def run():
             tf.summary.scalar('losses/Total_Loss', total_loss)
             tf.summary.scalar('learning_rate', lr)
             tf.summary.scalar('global_step', global_step)
-            tf.summary.histogram('proba_perso',pred)
-            tf.summary.histogram('images',images)        
+            tf.summary.histogram('proba_perso',pred)        
             #Create the train_op#.
         with tf.name_scope("merge_summary"):       
             my_summary_op = tf.summary.merge_all()
@@ -146,36 +145,6 @@ def run():
             saver_b = tf.train.Saver(variables_to_restore,name="Restoring_Saver")
         #Extracting global variables collections and feed it to our Model Saver
         variables_to_save = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
-        saver_a = tf.train.Saver(variables_to_save,max_to_keep=num_epochs, name="Model_Saver")
-        #Define a txt file to write inference results:
-        #Define a Summary Writer:
-        summy_writer = tf.summary.FileWriter(logdir=summary_dir, graph=graph)
-        #deFINE A ConfigProto to allow gpu device
-        #Definine checkpoint path for restoring the model
-        totalloss = 0.0
-        i = 0
-        with tf.Session(graph=graph) as sess:
-            sess.run([tf.global_variables_initializer(),
-                        tf.local_variables_initializer()])
-            saver_b.restore(sess,ckpt)
-            if not (ckpt_state and ckpt_state.model_checkpoint_path):
-                saver_a.save(sess,os.path.join(train_dir,"model"), global_step=global_step,latest_filename="checkpoint")
-            while i!= max_step:
-                _,i,tmp_loss, tmp_update= sess.run([train_op,global_step,total_loss,
-                                                                names_to_updates])
 
-                totalloss +=tmp_loss
-                format_str = ('\r%s: step %d,  avg_loss=%.3f, loss = %.2f, streaming_acc=%.2f')
-                sys.stdout.write(format_str % (datetime.time(), i, totalloss/i+1, tmp_loss, tmp_update['Accuracy']))
-                if i==max_step-1:
-                    saver_a.save(sess,os.path.join(train_dir,"model"), global_step=global_step)
-                    break
-                if i%100 == 1:
-                    merge = sess.run(my_summary_op)
-                    summy_writer.add_summary(merge,i)
-                if i%num_batches_per_epoch==0:
-                    #TODO: Add os.path.join to every directory variable in a func
-                    saver_a.save(sess,os.path.join(train_dir,"model"), global_step=global_step)
-        
 if __name__ == '__main__':
     run()
