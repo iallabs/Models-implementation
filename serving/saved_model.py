@@ -16,7 +16,7 @@ tf.app.flags.DEFINE_string('work_dir', '/tmp', 'Working directory.')
 FLAGS = tf.app.flags.FLAGS
 
 checkpoint_dir = os.getcwd()
-checkpoint_file = "D:/mura-25.08.2018/model-62101"
+checkpoint_file = "D:/ckpt-mura.05.08.2018/model-115001"
 
 image_size = 224
 #Images
@@ -33,11 +33,11 @@ image = tf.image.decode_image(tf_example['x'], channels=3)
 image = tf.image.convert_image_dtype(image, tf.float32)
 image.set_shape([None,None,3])
 image_a = dp.preprocess_image(image, 224,224, is_training=False)
-images_bis = tf.expand_dims(image_a,0)
+image_bis = tf.expand_dims(image_a,0)
 #Change this line for a different model:
-with slim.arg_scope(inception.inception_resnet_v2_arg_scope()):
-            #TODO: Check mobilenet_v1 module, var "excluding
-    logits, _ = inception.inception_resnet_v2(images_bis, num_classes = len(labels_to_name),create_aux_logits=False, is_training=False)
+with slim.arg_scope(mobilenet_v2.training_scope(is_training=False, weight_decay=0.0005, stddev=1., bn_decay=0.97)):
+    #TODO: Check mobilenet_v1 module, var "excluding
+    logits, _ = mobilenet_v2.mobilenet(image_bis,depth_multiplier=1.4, num_classes = len(labels_to_name))
 variables = slim.get_variables_to_restore()
 saver = tf.train.Saver(variables)
 y = tf.nn.softmax(logits)
@@ -47,7 +47,7 @@ table = tf.contrib.lookup.index_to_string_table_from_tensor(
 prediction_classes = table.lookup(tf.to_int64(indices))
 with tf.Session() as sess:
   saver.restore(sess,  checkpoint_file)
-  export_path_base = "mura_inception_resnet_v2"
+  export_path_base = "mura_mobilenetv2"
   export_path = os.path.join(
       tf.compat.as_bytes(export_path_base),
       tf.compat.as_bytes(str(FLAGS.model_version)))

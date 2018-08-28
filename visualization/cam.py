@@ -10,7 +10,7 @@ import os
 import numpy as np
 dataset_dir= "D:/MURA-v1.1"
 checkpoint_dir = "D:/ckpt-mura.05.08.2018"
-checkpoint_file = os.path.join(checkpoint_dir,"model-75901")
+checkpoint_file = os.path.join(checkpoint_dir,"model-115001")
 
 image_size = 224
 #Labels 

@@ -1,6 +1,7 @@
 import tensorflow as tf
 
 from tensorflow.python.platform import tf_logging as logging
+import research.slim.nets.inception_resnet_v2 as inception
 
 import research.slim.nets.mobilenet.mobilenet_v2 as mobilenet_v2
 
@@ -48,17 +49,17 @@ def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counti
 
 
         #Create the model inference
-        with slim.arg_scope(mobilenet_v2.training_scope(is_training=False)):
+        with slim.arg_scope(inception.inception_resnet_v2_arg_scope()):
             #TODO: Check mobilenet_v1 module, var "excluding
-            logits, end_points = mobilenet_v2.mobilenet(images,depth_multiplier=1.4, num_classes = len(labels_to_name))
-        end_points['Predictions_1'] = tf.nn.softmax(logits)
+            logits, _ = inception.inception_resnet_v2(images, num_classes = len(labels_to_name),create_aux_logits=False, is_training=False)
+        pred = tf.nn.softmax(logits)
         variables_to_restore = slim.get_variables_to_restore()
         
         #Defining accuracy and predictions:
         loss = tf.losses.softmax_cross_entropy(onehot_labels = oh_labels, logits = logits)
         total_loss = tf.reduce_mean(tf.losses.get_total_loss())
-        predictions = tf.argmax(end_points['Predictions_1'], 1)
-        probabilities = end_points['Predictions_1']
+        predictions = tf.argmax(pred, 1)
+        
 
         #Define the metrics to evaluate
         names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({
@@ -73,7 +74,7 @@ def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counti
             tf.add_to_collection(tf.GraphKeys.SUMMARIES, op)
         #Define and merge summaries:
         tf.summary.scalar('eval/loss', total_loss)
-        tf.summary.histogram('Predictions_validation', probabilities)
+        tf.summary.histogram('Predictions_validation', pred)
         summary_op_val = tf.summary.merge_all()
         #This is the common way to define evaluation using slim
 
@@ -86,6 +87,6 @@ def evaluate(checkpoint_eval, dataset_dir, file_pattern, file_pattern_for_counti
             variables_to_restore = variables_to_restore,
             summary_op=summary_op_val)
 
-ckpt_eval = tf.train.get_checkpoint_state(train_dir).model_checkpoint_path
+ckpt_eval = "D:/mura-25.08.2018/model-62101"
 
 evaluate(ckpt_eval, dataset_dir, file_pattern, file_pattern_for_counting, labels_to_name, batch_size, image_size)

@@ -14,7 +14,7 @@ def get_dataset(phase_name, dataset_dir, file_pattern, file_pattern_for_counting
         raise ValueError('The phase_name %s is not recognized. Please input either train or validation as the phase_name' % (phase_name))
 
     file_pattern_path = os.path.join(dataset_dir, file_pattern%(phase_name))
-
+    #TODO: Remove counting num_samples. num_samples have to be fixed before
     #Compte le nombre total d'examples dans tous les fichiers
     num_samples = 0
     file_pattern_for_counting = file_pattern_for_counting + '_' + phase_name
@@ -39,9 +39,9 @@ def get_dataset(phase_name, dataset_dir, file_pattern, file_pattern_for_counting
 
         return parsed_example
     dataset = dataset.map(parse_fn)
-    return dataset, num_samples
+    return dataset
 
-def load_batch(dataset, batch_size, height, width, num_epochs, is_training=True, shuffle=True):
+def load_batch(dataset, batch_size, height, width, num_epochs=None, is_training=True, shuffle=True):
 
     """ Fucntion for loading a train batch 
     OUTPUTS:
@@ -56,6 +56,8 @@ def load_batch(dataset, batch_size, height, width, num_epochs, is_training=True,
         return example
     
     dataset = dataset.map(process_fn)
+    if shuffle:
+        dataset = dataset.shuffle(1000)
     dataset = dataset.repeat(num_epochs)
     dataset = dataset.batch(batch_size)
     parsed_batch = dataset.make_one_shot_iterator().get_next()
@@ -77,6 +79,8 @@ def load_batch_dense(dataset, batch_size, height, width, num_epochs=None, is_tra
         
         return example
     dataset = dataset.map(process_fn)
+    if shuffle:
+        dataset = dataset.shuffle(1000)
     dataset = dataset.repeat(num_epochs)
     dataset = dataset.batch(batch_size)
     parsed_batch = dataset.make_one_shot_iterator().get_next()
