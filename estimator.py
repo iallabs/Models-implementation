@@ -107,15 +107,15 @@ def model_fn(images, onehot_labels, num_classes, checkpoint, mode):
     with tf.name_scope("metrics"):
         pred = predictions['classes']
         labels = tf.argmax(onehot_labels, 1)
-        names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({
+        metrics = {
         'Accuracy': tf.metrics.accuracy(labels, pred),
         'Precision': tf.metrics.precision(labels, pred),
         'Recall': tf.metrics.recall(labels, pred),
         'AUC': tf.metrics.auc(labels,pred)
-        })
+        }
         tf.summary.histogram('proba_perso',predictions['probabilities'])
     if mode == tf.estimator.ModeKeys.EVAL:
-        return tf.estimator.EstimatorSpec(mode, predictions=predictions, loss=loss, eval_metric_ops=names_to_values)
+        return tf.estimator.EstimatorSpec(mode, predictions=predictions, loss=loss, eval_metric_ops=metrics)
 
     #Create the global step for monitoring the learning_rate and training:
     global_step = tf.train.get_or_create_global_step()
