@@ -41,7 +41,7 @@ def get_dataset(phase_name, dataset_dir, file_pattern, file_pattern_for_counting
     dataset = dataset.map(parse_fn)
     return dataset
 
-def load_batch(dataset, batch_size, height, width, num_epochs=None, is_training=True, shuffle=True):
+def load_batch(dataset, batch_size, height, width, num_epochs=-1, is_training=True, shuffle=True):
 
     """ Fucntion for loading a train batch 
     OUTPUTS:
@@ -64,7 +64,7 @@ def load_batch(dataset, batch_size, height, width, num_epochs=None, is_training=
 
     return parsed_batch['image/encoded'], parsed_batch['image/class/one_hot']
 
-def load_batch_dense(dataset, batch_size, height, width, num_epochs=None, is_training=True, shuffle=True):
+def load_batch_dense(dataset, batch_size, height, width, num_epochs=-1, is_training=True, shuffle=True):
 
     """ Function for loading a train batch 
     OUTPUTS:
@@ -79,7 +79,7 @@ def load_batch_dense(dataset, batch_size, height, width, num_epochs=None, is_tra
         return example
     dataset = dataset.map(process_fn)
     if shuffle:
-        dataset = dataset.shuffle(1000,reshuffle_each_iteration=True)
+        dataset = dataset.shuffle(1000)
     dataset = dataset.repeat(num_epochs)
     dataset = dataset.batch(batch_size)
     parsed_batch = dataset.make_one_shot_iterator().get_next()
