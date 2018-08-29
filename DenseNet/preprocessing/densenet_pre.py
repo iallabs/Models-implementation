@@ -6,14 +6,14 @@ import tensorflow as tf
 
 slim = tf.contrib.slim
 #ImageNet RGB mean values (moyenne)0.485, 0.457,0.407
-_R_MEAN = 0.234
-_G_MEAN = 0.229
-_B_MEAN = 0.235
+_R_MEAN = 0.521
+_G_MEAN = 0.518
+_B_MEAN = 0.520
 
 #ImageNet standard deviation (écart-type)0.229, 0.224, 0.225
-_R_STD = 0.187
-_G_STD = 0.189
-_B_STD = 0.192
+_R_STD = 0.250
+_G_STD = 0.249
+_B_STD = 0.251
 
 _RESIZE_SIDE_MIN = 256
 _RESIZE_SIDE_MAX = 512

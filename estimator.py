@@ -142,7 +142,7 @@ def main():
     #Define the distribution Strategy for distributed work:
     distribution=tf.contrib.distribute.MirroredStrategy()
     #Define configuration of distributed/non-distributed work:
-    config = tf.estimator.RunConfig(model_dir=train_dir, save_checkpoints_steps=num_batches_per_epoch, distribute=distribution)
+    run_config = tf.estimator.RunConfig(model_dir=train_dir, save_checkpoints_steps=num_batches_per_epoch, train_distribute=distribution)
     train_spec = tf.estimator.TrainSpec(input_fn=lambda:input_fn(tf.estimator.ModeKeys.TRAIN,
                                                 dataset_dir,file_pattern,
                                                 file_pattern_for_counting, labels_to_name,
@@ -153,7 +153,8 @@ def main():
                                                     batch_size,image_size))
     work = tf.estimator.Estimator(model_fn = lambda features,
                                 labels, mode: model_fn(features, labels, len(labels_to_name), ckpt_state, mode),
-                                model_dir=train_dir)
+                                model_dir=train_dir,
+                                config=run_config)
        
     tf.estimator.train_and_evaluate(work, train_spec, eval_spec)
 if __name__ == '__main__':
