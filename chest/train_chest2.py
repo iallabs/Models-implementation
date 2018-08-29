@@ -99,11 +99,11 @@ def run():
         excluding = ['MobilenetV2/Logits']
 
         variables_to_restore = slim.get_variables_to_restore(exclude=excluding)        
-        pred = tf.nn.sigmoid(logits)
+        pred = tf.nn.softmax(logits)
 
         #Defining losses and regulization ops:
         with tf.name_scope("loss_op"):
-            loss = tf.losses.sigmoid_cross_entropy(multi_class_labels = oh_labels, logits = logits)
+            loss = tf.losses.softmax_cross_entropy(onehot_labels = oh_labels, logits = logits)
         
             total_loss = tf.losses.get_total_loss()#obtain the regularization losses as well
         
