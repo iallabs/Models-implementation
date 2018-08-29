@@ -135,9 +135,14 @@ def model_fn(images, onehot_labels, num_classes, checkpoint_state, mode):
     return tf.estimator.EstimatorSpec(mode, predictions=predictions, loss=total_loss, train_op=train_op)
 
 def main():
+    #Define the checkpoint state to determine initialization: from pre-trained weigths or recovery
     ckpt_state = tf.train.get_checkpoint_state(train_dir)       
     #Define max steps:
     max_step = num_epochs*num_batches_per_epoch
+    #Define the distribution Strategy for distributed work:
+    distribution=tf.contrib.distribute.MirroredStrategy()
+    #Define configuration of distributed/non-distributed work:
+    config = tf.estimator.RunConfig(model_dir=train_dir, save_checkpoints_steps=num_batches_per_epoch)
     train_spec = tf.estimator.TrainSpec(input_fn=lambda:input_fn(tf.estimator.ModeKeys.TRAIN,
                                                 dataset_dir,file_pattern,
                                                 file_pattern_for_counting, labels_to_name,

@@ -16,13 +16,8 @@ def get_dataset(phase_name, dataset_dir, file_pattern, file_pattern_for_counting
     file_pattern_path = os.path.join(dataset_dir, file_pattern%(phase_name))
     #TODO: Remove counting num_samples. num_samples have to be fixed before
     #Compte le nombre total d'examples dans tous les fichiers
-    num_samples = 0
     file_pattern_for_counting = file_pattern_for_counting + '_' + phase_name
     tfrecords_to_count = [os.path.join(dataset_dir, file) for file in os.listdir(dataset_dir) if file.startswith(file_pattern_for_counting)]
-    for tfrecord_file in tfrecords_to_count:
-        for record in tf.python_io.tf_record_iterator(tfrecord_file):
-            num_samples += 1
-    print(num_samples)
     dataset = tf.data.TFRecordDataset(tfrecords_to_count)
     num_class = len(labels_to_name)
     def parse_fn(example):

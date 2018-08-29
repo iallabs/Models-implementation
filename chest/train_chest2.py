@@ -28,7 +28,6 @@ FLAGS = flags.FLAGS
 dataset_dir = FLAGS.dataset_dir
 train_dir = FLAGS.train_dir
 summary_dir = os.path.join(train_dir, "summary")
-
 gpu_p = FLAGS.gpu_p
 #Emplacement du checkpoint file
 checkpoint_file= FLAGS.ckpt
@@ -37,7 +36,7 @@ image_size = 224
 #Nombre de classes à prédire
 file_pattern = "chest_%s_*.tfrecord"
 file_pattern_for_counting = "chest"
-
+num_samples = 100908
 #Création d'un dictionnaire pour reférer à chaque label
 
 
@@ -63,7 +62,7 @@ labels_to_name = {
 #Nombre d'époques pour l'entraînement
 num_epochs = 100
 #State your batch size
-batch_size = 24
+batch_size = 2
 #Learning rate information and configuration (Up to you to experiment)
 initial_learning_rate = 1e-4
 learning_rate_decay_factor = 0.95
@@ -81,7 +80,7 @@ def run():
     tf.reset_default_graph()
     with tf.Graph().as_default() as graph:
         with tf.name_scope("dataset"):
-            dataset, num_samples= get_dataset("train", dataset_dir, file_pattern=file_pattern,
+            dataset= get_dataset("train", dataset_dir, file_pattern=file_pattern,
                                     file_pattern_for_counting=file_pattern_for_counting, labels_to_name=labels_to_name)
         with tf.name_scope("load_data"):
             images, oh_labels = load_batch_dense(dataset, batch_size, image_size, image_size,
