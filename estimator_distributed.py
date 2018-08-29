@@ -5,7 +5,7 @@ from tensorflow.python.platform import tf_logging as logging
 import DenseNet.nets.densenet as densenet
 import research.slim.nets.mobilenet.mobilenet_v2 as mobilenet_v2
 import research.slim.nets.inception_resnet_v2 as inception
-from utils.gen_tfrec import load_batch, get_dataset, load_batch_dense
+from utils.gen_tfrec import load_batch, get_dataset, load_batch_dense, load_batch_estimator
 
 import os
 import sys
@@ -143,8 +143,10 @@ def main():
     ckpt_state = tf.train.get_checkpoint_state(train_dir)       
     #Define max steps:
     max_step = num_epochs*num_batches_per_epoch
-    #Define configuration non-distributed work:
-    run_config = tf.estimator.RunConfig(model_dir=train_dir, save_checkpoints_steps=num_batches_per_epoch)
+    #Define the distribution method to coordinate a distributed training:
+    distribution = tf.contrib.distribute.MirroredStrategy()
+    #Define configuration distributed work:
+    run_config = tf.estimator.RunConfig(model_dir=train_dir, save_checkpoints_steps=num_batches_per_epoch, distribute=distribution)
     train_spec = tf.estimator.TrainSpec(input_fn=lambda:input_fn(tf.estimator.ModeKeys.TRAIN,
                                                 dataset_dir,file_pattern,
                                                 file_pattern_for_counting, labels_to_name,

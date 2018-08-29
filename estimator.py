@@ -47,7 +47,7 @@ labels_to_name = {
 #Nombre d'époques pour l'entraînement
 num_epochs = 100
 #State your batch size
-batch_size = 2
+batch_size = 16
 #Learning rate information and configuration (Up to you to experiment)
 initial_learning_rate = 1e-4
 #Decay factor
@@ -81,12 +81,14 @@ def input_fn(mode, dataset_dir,file_pattern, file_pattern_for_counting, labels_t
                                                         shuffle=train_mode, is_training=train_mode)
     return dataset 
 
-def model_fn(images, onehot_labels, num_classes, checkpoint_state, mode):
+def model_fn(images, onehot_labels, mode, num_classes, checkpoint_state):
     train_mode = mode==tf.estimator.ModeKeys.TRAIN
+    print("training_mode:"+str(train_mode))
+    print(mode)
     #Create the model inference
-    with slim.arg_scope(inception.inception_resnet_v2_arg_scope(weight_decay=5e-4,batch_norm_decay=0.97)):
-    #TODO: Check mobilenet_v1 module, var "excluding
-        logits, _ = inception.inception_resnet_v2(images, num_classes = num_classes,create_aux_logits=False, is_training=train_mode)
+    with slim.arg_scope(mobilenet_v2.training_scope(is_training=train_mode, weight_decay=0.0005, stddev=1., bn_decay=0.97)):
+            #TODO: Check mobilenet_v1 module, var "excluding
+            logits, _ = mobilenet_v2.mobilenet(images,depth_multiplier=1.0, num_classes = len(labels_to_name))
     predictions = {
             'classes':tf.argmax(logits, axis=1),
             'probabilities': tf.nn.softmax(logits, name="Softmax")
@@ -95,7 +97,7 @@ def model_fn(images, onehot_labels, num_classes, checkpoint_state, mode):
     if mode == tf.estimator.ModeKeys.PREDICT:
         return tf.estimator.EstimatorSpec(mode, predictions=predictions)    
     
-    excluding = ['InceptionResnetV2/Logits/Logits', 'InceptionResnetV2/Logits/Dropout']   
+    excluding = ['MobilenetV2/Logits']   
     variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
     if not checkpoint_state and checkpoint_file:
         tf.train.init_from_checkpoint(checkpoint_file, 
@@ -115,9 +117,7 @@ def model_fn(images, onehot_labels, num_classes, checkpoint_state, mode):
         'AUC': tf.metrics.auc(labels,pred)
         }
         for name, value in metrics.items():
-                summary_name = 'train/%s' % name
-                tf.summary.scalar(summary_name, value[1])
-
+            tf.summary.scalar(name, value[1])
         tf.summary.histogram('proba_perso',predictions['probabilities'])
     if mode == tf.estimator.ModeKeys.EVAL:
         return tf.estimator.EstimatorSpec(mode, predictions=predictions, loss=loss, eval_metric_ops=metrics)
@@ -153,8 +153,7 @@ def main():
                                                     dataset_dir, file_pattern,
                                                     file_pattern_for_counting, labels_to_name,
                                                     batch_size,image_size))
-    work = tf.estimator.Estimator(model_fn = lambda features,
-                                labels, mode: model_fn(features, labels, mode, len(labels_to_name), ckpt_state),
+    work = tf.estimator.Estimator(model_fn = lambda features,labels, mode, config: model_fn(features, labels, mode, len(labels_to_name), ckpt_state),
                                 model_dir=train_dir,
                                 config=run_config)
        
