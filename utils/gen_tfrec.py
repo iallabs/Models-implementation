@@ -22,7 +22,7 @@ def get_dataset(phase_name, dataset_dir, file_pattern, file_pattern_for_counting
     for tfrecord_file in tfrecords_to_count:
         for record in tf.python_io.tf_record_iterator(tfrecord_file):
             num_samples += 1
-
+    print(num_samples)
     dataset = tf.data.TFRecordDataset(tfrecords_to_count)
     num_class = len(labels_to_name)
     def parse_fn(example):
@@ -50,14 +50,13 @@ def load_batch(dataset, batch_size, height, width, num_epochs=None, is_training=
     """
     dataset = dataset.repeat(num_epochs)
     def process_fn(example):
-        tf.summary.image("final_image", example['image/encoded'])
         example['image/encoded'].set_shape([None,None,3])
         example['image/encoded']= inception_preprocessing.preprocess_image(example['image/encoded'], height, width, is_training)
         return example
     
     dataset = dataset.map(process_fn)
     if shuffle:
-        dataset = dataset.shuffle(1000)
+        dataset = dataset.shuffle(1000, reshuffle_each_iteration=True)
     dataset = dataset.repeat(num_epochs)
     dataset = dataset.batch(batch_size)
     parsed_batch = dataset.make_one_shot_iterator().get_next()
@@ -80,7 +79,7 @@ def load_batch_dense(dataset, batch_size, height, width, num_epochs=None, is_tra
         return example
     dataset = dataset.map(process_fn)
     if shuffle:
-        dataset = dataset.shuffle(1000)
+        dataset = dataset.shuffle(1000,reshuffle_each_iteration=True)
     dataset = dataset.repeat(num_epochs)
     dataset = dataset.batch(batch_size)
     parsed_batch = dataset.make_one_shot_iterator().get_next()

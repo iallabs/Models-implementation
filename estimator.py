@@ -81,7 +81,7 @@ def input_fn(mode, dataset_dir,file_pattern, file_pattern_for_counting, labels_t
                                                         shuffle=train_mode, is_training=train_mode)
     return images, onehot_labels  
 
-def model_fn(images, onehot_labels, num_classes, checkpoint, mode):
+def model_fn(images, onehot_labels, num_classes, checkpoint_state, mode):
     train_mode = mode==tf.estimator.ModeKeys.TRAIN
     #Create the model inference
     with slim.arg_scope(inception.inception_resnet_v2_arg_scope(weight_decay=5e-4,batch_norm_decay=0.97)):
@@ -97,8 +97,9 @@ def model_fn(images, onehot_labels, num_classes, checkpoint, mode):
     
     excluding = ['InceptionResnetV2/Logits/Logits', 'InceptionResnetV2/Logits/Dropout']   
     variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
-    tf.train.init_from_checkpoint(checkpoint, 
-                              {v.name.split(':')[0]: v for v in variables_to_restore})
+    if not checkpoint_state and checkpoint_file:
+        tf.train.init_from_checkpoint(checkpoint_file, 
+                            {v.name.split(':')[0]: v for v in variables_to_restore})
     #Defining losses and regulization ops:
     with tf.name_scope("loss_op"):
         loss = tf.losses.softmax_cross_entropy(onehot_labels = onehot_labels, logits = logits)
@@ -134,11 +135,7 @@ def model_fn(images, onehot_labels, num_classes, checkpoint, mode):
     return tf.estimator.EstimatorSpec(mode, predictions=predictions, loss=total_loss, train_op=train_op)
 
 def main():
-    ckpt_state = tf.train.get_checkpoint_state(train_dir)
-    if ckpt_state and ckpt_state.model_checkpoint_path:
-        ckpt = ckpt_state.model_checkpoint_path
-    else:
-        ckpt = checkpoint_file        
+    ckpt_state = tf.train.get_checkpoint_state(train_dir)       
     #Define max steps:
     max_step = num_epochs*num_batches_per_epoch
     train_spec = tf.estimator.TrainSpec(input_fn=lambda:input_fn(tf.estimator.ModeKeys.TRAIN,
@@ -150,7 +147,7 @@ def main():
                                                     file_pattern_for_counting, labels_to_name,
                                                     batch_size,image_size))
     work = tf.estimator.Estimator(model_fn = lambda features,
-                                labels, mode: model_fn(features, labels, len(labels_to_name), ckpt, mode),
+                                labels, mode: model_fn(features, labels, len(labels_to_name), ckpt_state, mode),
                                 model_dir=train_dir)
        
     tf.estimator.train_and_evaluate(work, train_spec, eval_spec)
