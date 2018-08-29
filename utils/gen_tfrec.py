@@ -60,7 +60,6 @@ def load_batch(dataset, batch_size, height, width, num_epochs=-1, is_training=Tr
     return parsed_batch['image/encoded'], parsed_batch['image/class/one_hot']
 
 def load_batch_dense(dataset, batch_size, height, width, num_epochs=-1, is_training=True, shuffle=True):
-
     """ Function for loading a train batch 
     OUTPUTS:
     - images(Tensor): a Tensor of the shape (batch_size, height, width, channels) that contain one batch of images
@@ -80,3 +79,22 @@ def load_batch_dense(dataset, batch_size, height, width, num_epochs=-1, is_train
     parsed_batch = dataset.make_one_shot_iterator().get_next()
     tf.summary.image("final_image", parsed_batch['image/encoded'])
     return parsed_batch['image/encoded'], parsed_batch['image/class/one_hot']
+
+def load_batch_estimator(dataset, batch_size, height, width, num_epochs=-1, is_training=True, shuffle=True):
+    """ Function for loading a train batch 
+    OUTPUTS:
+    - images(Tensor): a Tensor of the shape (batch_size, height, width, channels) that contain one batch of images
+    - labels(Tensor): the batch's labels with the shape (batch_size,) (requires one_hot_encoding).
+    """
+    def process_fn(example):
+        tf.summary.image("final_image", example['image/encoded'])
+        example['image/encoded'].set_shape([None,None,3])
+        example['image/encoded'] = dp.preprocess_image(example['image/encoded'], height, width, is_training)
+        
+        return example
+    dataset = dataset.map(process_fn)
+    if shuffle:
+        dataset = dataset.shuffle(1000)
+    dataset = dataset.repeat(num_epochs)
+    dataset = dataset.batch(batch_size)
+    return dataset

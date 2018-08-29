@@ -36,7 +36,7 @@ image_size = 224
 #Nombre de classes à prédire
 file_pattern = "MURA_%s_*.tfrecord"
 file_pattern_for_counting = "MURA"
-num_samples = 1000
+num_samples = 36807
 #Création d'un dictionnaire pour reférer à chaque label
 labels_to_name = {
     'negative':0,
@@ -77,9 +77,9 @@ def input_fn(mode, dataset_dir,file_pattern, file_pattern_for_counting, labels_t
                                         file_pattern_for_counting=file_pattern_for_counting,
                                         labels_to_name=labels_to_name)
     with tf.name_scope("load_data"):
-        images, onehot_labels = load_batch_dense(dataset, batch_size, image_size, image_size, num_epochs,
+        dataset = load_batch_dense(dataset, batch_size, image_size, image_size, num_epochs,
                                                         shuffle=train_mode, is_training=train_mode)
-    return images, onehot_labels  
+    return dataset 
 
 def model_fn(images, onehot_labels, num_classes, checkpoint_state, mode):
     train_mode = mode==tf.estimator.ModeKeys.TRAIN
@@ -114,6 +114,10 @@ def model_fn(images, onehot_labels, num_classes, checkpoint_state, mode):
         'Recall': tf.metrics.recall(labels, pred),
         'AUC': tf.metrics.auc(labels,pred)
         }
+        for name, value in metrics.items():
+                summary_name = 'train/%s' % name
+                tf.summary.scalar(summary_name, value[1])
+
         tf.summary.histogram('proba_perso',predictions['probabilities'])
     if mode == tf.estimator.ModeKeys.EVAL:
         return tf.estimator.EstimatorSpec(mode, predictions=predictions, loss=loss, eval_metric_ops=metrics)
@@ -139,10 +143,9 @@ def main():
     ckpt_state = tf.train.get_checkpoint_state(train_dir)       
     #Define max steps:
     max_step = num_epochs*num_batches_per_epoch
-    #Define the distribution Strategy for distributed work:
-    distribution=tf.contrib.distribute.MirroredStrategy()
     #Define configuration of distributed/non-distributed work:
-    run_config = tf.estimator.RunConfig(model_dir=train_dir, save_checkpoints_steps=num_batches_per_epoch, train_distribute=distribution)
+    print("num_batches/epoch"+str(num_batches_per_epoch))
+    run_config = tf.estimator.RunConfig(model_dir=train_dir, save_checkpoints_steps=num_batches_per_epoch)
     train_spec = tf.estimator.TrainSpec(input_fn=lambda:input_fn(tf.estimator.ModeKeys.TRAIN,
                                                 dataset_dir,file_pattern,
                                                 file_pattern_for_counting, labels_to_name,
