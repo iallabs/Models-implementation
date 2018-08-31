@@ -47,6 +47,7 @@ table = tf.contrib.lookup.index_to_string_table_from_tensor(
 prediction_classes = table.lookup(tf.to_int64(indices))
 with tf.Session() as sess:
   saver.restore(sess,  checkpoint_file)
+  #TODO: "Noun of dataset"_"model"_"model version"
   export_path_base = "mura_mobilenetv2"
   export_path = os.path.join(
       tf.compat.as_bytes(export_path_base),
