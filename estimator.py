@@ -83,8 +83,6 @@ def input_fn(mode, dataset_dir,file_pattern, file_pattern_for_counting, labels_t
 
 def model_fn(images, onehot_labels, mode, num_classes, checkpoint_state):
     train_mode = mode==tf.estimator.ModeKeys.TRAIN
-    print("training_mode:"+str(train_mode))
-    print(mode)
     #Create the model inference
     with slim.arg_scope(mobilenet_v2.training_scope(is_training=train_mode, weight_decay=0.0005, stddev=1., bn_decay=0.97)):
             #TODO: Check mobilenet_v1 module, var "excluding
@@ -100,6 +98,7 @@ def model_fn(images, onehot_labels, mode, num_classes, checkpoint_state):
     excluding = ['MobilenetV2/Logits']   
     variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
     if not checkpoint_state and checkpoint_file:
+        variables_to_restore = variables_to_restore[1:]
         tf.train.init_from_checkpoint(checkpoint_file, 
                             {v.name.split(':')[0]: v for v in variables_to_restore})
     #Defining losses and regulization ops:
@@ -107,18 +106,17 @@ def model_fn(images, onehot_labels, mode, num_classes, checkpoint_state):
         loss = tf.losses.softmax_cross_entropy(onehot_labels = onehot_labels, logits = logits)
         total_loss = tf.losses.get_total_loss()#obtain the regularization losses as well
     #FIXME: Replace classifier function (sigmoid / softmax)
-    with tf.name_scope("metrics"):
-        pred = predictions['classes']
-        labels = tf.argmax(onehot_labels, 1)
-        metrics = {
-        'Accuracy': tf.metrics.accuracy(labels, pred),
-        'Precision': tf.metrics.precision(labels, pred),
-        'Recall': tf.metrics.recall(labels, pred),
-        'AUC': tf.metrics.auc(labels,pred)
-        }
-        for name, value in metrics.items():
-            tf.summary.scalar(name, value[1])
-        tf.summary.histogram('proba_perso',predictions['probabilities'])
+    pred = predictions['classes']
+    labels = tf.argmax(onehot_labels, 1)
+    metrics = {
+    'Accuracy': tf.metrics.accuracy(labels, pred),
+    'Precision': tf.metrics.precision(labels, pred),
+    'Recall': tf.metrics.recall(labels, pred),
+    'AUC': tf.metrics.auc(labels,pred)
+    }
+    for name, value in metrics.items():
+        tf.summary.scalar(name, value[1])
+    tf.summary.histogram('proba_perso',predictions['probabilities'])
     if mode == tf.estimator.ModeKeys.EVAL:
         return tf.estimator.EstimatorSpec(mode, predictions=predictions, loss=loss, eval_metric_ops=metrics)
 

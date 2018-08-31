@@ -3,6 +3,7 @@ import pandas as pd
 import os
 import sys
 import math
+from object_detection.utils import dataset_util
 #SOURCE: https://github.com/tensorflow/models/blob/master/research/slim/datasets/download_and_convert_flowers.py
 
 slim = tf.contrib.slim
@@ -58,10 +59,7 @@ class ImageReader(object):
                         feed_dict={self._decode_jpeg_data: image_data})
         assert len(image.shape) == 3
         assert image.shape[2] == 3
-        return image
-
-    
-
+        return image  
 
 
 def _get_dataset_filename(dataset_dir, split_name, shard_id, tfrecord_filename, _NUM_SHARDS):
@@ -118,8 +116,53 @@ def _convert_dataset(split_name, grouped, class_names_to_ids, dataset_dir, tfrec
                             class_name = row['Finding Labels'].split('|')[0]
                         else: 
                             class_name = row['Finding Labels']
-                        #MURA dataset extracting labels
-                        """class_name = row[0].split('/')[-2].split('_')[-1]"""
+                        """class_name = row[0].split('/')[-2].split('_')[-1]"""#MURA dataset extracting labels
+                        class_id = class_names_to_ids[class_name]
+                        example = image_to_tfexample(image_data, row[0].encode(), 'png'.encode(),
+                                                    height, width, class_id)
+        
+                        tfrecord_writer.write(example.SerializeToString())
+                        tfrecord_writer.flush()
+                        j=i
+    sys.stdout.write('\n')
+    sys.stdout.flush()
+
+
+def _convert_dataset_objd(split_name, grouped, class_names_to_ids, dataset_dir, tfrecord_filename, _NUM_SHARDS):
+    """Converts the given filenames to a TFRecord dataset compatible with Tensorflow Object API.
+    Args:
+        split_name: The name of the dataset, either 'train' or 'validation'.
+        dataset_dir: The directory where the converted datasets are stored.
+    """
+    assert split_name in ['train', 'validation']
+    num_per_shard = int(math.ceil(len(grouped) / float(_NUM_SHARDS)))
+    path_img = os.path.join(dataset_dir, 'images')#: To use if images are located in one folder named images
+    #path_img = dataset_dir #To use on MURA Like datasets (train and validation img folders, put the csv file on main direction)
+    with tf.Graph().as_default():
+        image_reader = ImageReader()
+
+        with tf.Session('') as sess:
+            for shard_id in range(_NUM_SHARDS):
+                output_filename = _get_dataset_filename(
+                                dataset_dir, split_name, shard_id, tfrecord_filename = tfrecord_filename, _NUM_SHARDS = _NUM_SHARDS)
+                with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
+                    start_ndx = shard_id * num_per_shard
+                    end_ndx = min((shard_id+1) * num_per_shard, len(grouped))
+
+                    for i in range(start_ndx, end_ndx):
+                        sys.stdout.write('\r>> Converting image %d/%d shard %d' % (i+1, len(grouped), shard_id))
+                        sys.stdout.flush()
+
+                        # Read the filename:
+                        row = grouped.iloc[i]
+                        image_data = tf.gfile.FastGFile(os.path.join(path_img, row[0]), 'rb').read()
+                        height, width = image_reader.read_image_dims(sess, image_data)
+                        #Special to ChestX Dataset: we only focus on the first anomaly(see Data_Entry_csv)
+                        if '|' in row['Finding Labels']:
+                            class_name = row['Finding Labels'].split('|')[0]
+                        else: 
+                            class_name = row['Finding Labels']
+                        """class_name = row[0].split('/')[-2].split('_')[-1]"""#MURA dataset extracting labels
                         class_id = class_names_to_ids[class_name]
                         example = image_to_tfexample(image_data, row[0].encode(), 'png'.encode(),
                                                     height, width, class_id)
