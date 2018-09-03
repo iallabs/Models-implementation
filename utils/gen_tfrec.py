@@ -74,7 +74,10 @@ def load_batch_dense(dataset, batch_size, height, width, num_epochs=-1, is_train
     dataset = dataset.map(process_fn)
     if shuffle:
         dataset = dataset.shuffle(1000)
-    dataset = dataset.repeat(num_epochs)
+    if is_training:
+        dataset = dataset.repeat(num_epochs)
+    else:
+        dataset = dataset.repeat(1)
     dataset = dataset.batch(batch_size)
     parsed_batch = dataset.make_one_shot_iterator().get_next()
     tf.summary.image("final_image", parsed_batch['image/encoded'])

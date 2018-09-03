@@ -66,7 +66,7 @@ labels_to_name = {
 #Nombre d'époques pour l'entraînement
 num_epochs = 100
 #State your batch size
-batch_size = 32
+batch_size = 10
 #Learning rate information and configuration (Up to you to experiment)
 initial_learning_rate = 1e-4
 #Decay factor
@@ -97,7 +97,7 @@ def input_fn(mode, dataset_dir,file_pattern, file_pattern_for_counting, labels_t
                                         file_pattern_for_counting=file_pattern_for_counting,
                                         labels_to_name=labels_to_name)
     with tf.name_scope("load_data"):
-        dataset = load_batch_dense(dataset, batch_size, image_size, image_size, num_epochs,
+        dataset = load_batch_dense(dataset, batch_size, image_size, image_size,
                                                         shuffle=train_mode, is_training=train_mode)
     return dataset 
 
@@ -107,7 +107,7 @@ def model_fn(images, onehot_labels, mode, num_classes, checkpoint_state):
     #Create the model inference
     with slim.arg_scope(mobilenet_v2.training_scope(is_training=train_mode, weight_decay=0.0005, stddev=1., bn_decay=0.99)):
             #TODO: Check mobilenet_v1 module, var "excluding
-            logits, _ = mobilenet_v2.mobilenet(images,depth_multiplier=1.4, num_classes = len(labels_to_name))
+            logits, _ = mobilenet_v2.mobilenet(images,depth_multiplier=1.0, num_classes = len(labels_to_name))
     predictions = {
             'classes':tf.argmax(logits, axis=1),
             'probabilities': tf.nn.softmax(logits, name="Softmax")
@@ -162,7 +162,7 @@ def main():
     max_step = num_epochs*num_batches_per_epoch
     print(num_batches_per_epoch)
     #Define configuration non-distributed work:
-    run_config = tf.estimator.RunConfig(model_dir=train_dir, save_checkpoints_steps=num_batches_per_epoch, keep_checkpoint_max=None)
+    run_config = tf.estimator.RunConfig(model_dir=train_dir, save_checkpoints_steps=num_batches_per_epoch, keep_checkpoint_max=num_epochs)
     train_spec = tf.estimator.TrainSpec(input_fn=lambda:input_fn(tf.estimator.ModeKeys.TRAIN,
                                                 dataset_dir,file_pattern,
                                                 file_pattern_for_counting, labels_to_name,
