@@ -128,17 +128,15 @@ def model_fn(images, onehot_labels, mode, num_classes, checkpoint_state):
     pred = predictions['classes']
     labels = tf.argmax(onehot_labels, 1)
     metrics = {
-    'Accuracy': tf.metrics.accuracy(labels, pred),
-    'Precision': tf.metrics.precision(labels, pred),
-    'Recall': tf.metrics.recall(labels, pred),
-    'AUC': tf.metrics.auc(labels,pred)
+    'Accuracy': tf.metrics.accuracy(labels, pred, name="acc_op"),
+    'Precision': tf.metrics.precision(labels, pred, name="precision_op"),
+    'Recall': tf.metrics.recall(labels, pred, name="recall_op")
     }
     for name, value in metrics.items():
         tf.summary.scalar(name, value[1])
-    tf.summary.histogram('proba_perso',predictions['probabilities'])
     if mode == tf.estimator.ModeKeys.EVAL:
         return tf.estimator.EstimatorSpec(mode, predictions=predictions, loss=loss, eval_metric_ops=metrics)
-
+    tf.summary.histogram('proba_perso',predictions['probabilities'])
     #Create the global step for monitoring the learning_rate and training:
     global_step = tf.train.get_or_create_global_step()
     with tf.name_scope("learning_rate"):    
