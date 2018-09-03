@@ -162,7 +162,7 @@ def main():
     max_step = num_epochs*num_batches_per_epoch
     print(num_batches_per_epoch)
     #Define configuration non-distributed work:
-    run_config = tf.estimator.RunConfig(model_dir=train_dir, save_checkpoints_steps=num_batches_per_epoch, keep_checkpoint_max=num_epochs)
+    run_config = tf.estimator.RunConfig(model_dir=train_dir, save_checkpoints_steps=num_batches_per_epoch, save_checkpoints_secs=None,keep_checkpoint_max=num_epochs)
     train_spec = tf.estimator.TrainSpec(input_fn=lambda:input_fn(tf.estimator.ModeKeys.TRAIN,
                                                 dataset_dir,file_pattern,
                                                 file_pattern_for_counting, labels_to_name,
