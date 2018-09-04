@@ -4,6 +4,7 @@ slim = tf.contrib.slim
 import research.slim.nets.mobilenet.mobilenet_v2 as mobilenet_v2
 from research.slim.preprocessing import inception_preprocessing
 import DenseNet.preprocessing.densenet_pre as dp
+import DenseNet.nets.densenet as densenet
 import research.slim.nets.inception_resnet_v2 as inception
 
 
@@ -20,10 +21,28 @@ checkpoint_file = "D:/ckpt-mura.05.08.2018/model-115001"
 
 image_size = 224
 #Images
+#Labels MURA
 labels_to_name = {0:'negative', 
                 1:'positive'
                 }
 
+#Labels of chest-X-Ray:
+labels_to_name = {
+                0:'Atelectasis',
+                1:'Cardiomegaly', 
+                2:'Effusion',
+                3:'Infiltration',
+                4:'Mass',
+                5:'Nodule',
+                6:'Pneumonia',
+                7:'Pneumothorax',
+                8:'Consolidation',
+                9:'Edema',
+                10:'Emphysema',
+                11:'Fibrosis',
+                12:'Pleural_Thickening',
+                13:'Hernia'
+                }
 tf.logging.set_verbosity(tf.logging.INFO)
 
 serialized_tf_example = tf.placeholder(tf.string, name='tf_example')
@@ -35,9 +54,9 @@ image.set_shape([None,None,3])
 image_a = dp.preprocess_image(image, 224,224, is_training=False)
 image_bis = tf.expand_dims(image_a,0)
 #Change this line for a different model:
-with slim.arg_scope(mobilenet_v2.training_scope(is_training=False, weight_decay=0.0005, stddev=1., bn_decay=0.97)):
+with slim.arg_scope(densenet.densenet_arg_scope(is_training=True)):
     #TODO: Check mobilenet_v1 module, var "excluding
-    logits, _ = mobilenet_v2.mobilenet(image_bis,depth_multiplier=1.4, num_classes = len(labels_to_name))
+    logits, _ = densenet.densenet121(image_bis, num_classes = len(labels_to_name))
 variables = slim.get_variables_to_restore()
 saver = tf.train.Saver(variables)
 y = tf.nn.softmax(logits)
@@ -48,7 +67,7 @@ prediction_classes = table.lookup(tf.to_int64(indices))
 with tf.Session() as sess:
   saver.restore(sess,  checkpoint_file)
   #TODO: "Noun of dataset"_"model"_"model version"
-  export_path_base = "mura_mobilenetv2"
+  export_path_base = "chestXray_densenet_121"
   export_path = os.path.join(
       tf.compat.as_bytes(export_path_base),
       tf.compat.as_bytes(str(FLAGS.model_version)))

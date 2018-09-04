@@ -66,7 +66,7 @@ labels_to_name = {
 #Nombre d'époques pour l'entraînement
 num_epochs = 100
 #State your batch size
-batch_size = 32
+batch_size = 10
 #Learning rate information and configuration (Up to you to experiment)
 initial_learning_rate = 1e-4
 #Decay factor
@@ -90,7 +90,6 @@ tf.logging.set_verbosity(tf.logging.INFO)
 
 def input_fn(mode, dataset_dir,file_pattern, file_pattern_for_counting, labels_to_name, batch_size, image_size):
     train_mode = mode==tf.estimator.ModeKeys.TRAIN
-    print(train_mode)
     with tf.name_scope("dataset"):
         dataset = get_dataset("train" if train_mode else "validation",
                                         dataset_dir, file_pattern=file_pattern,
@@ -103,7 +102,6 @@ def input_fn(mode, dataset_dir,file_pattern, file_pattern_for_counting, labels_t
 
 def model_fn(images, onehot_labels, mode, num_classes, checkpoint_state):
     train_mode = mode==tf.estimator.ModeKeys.TRAIN
-    print(train_mode)
     #Create the model inference
     with slim.arg_scope(mobilenet_v2.training_scope(is_training=train_mode, weight_decay=0.0005, stddev=1., bn_decay=0.99)):
             #TODO: Check mobilenet_v1 module, var "excluding
@@ -160,7 +158,6 @@ def main():
     ckpt_state = tf.train.get_checkpoint_state(train_dir)       
     #Define max steps:
     max_step = num_epochs*num_batches_per_epoch
-    print(num_batches_per_epoch)
     #Define configuration non-distributed work:
     run_config = tf.estimator.RunConfig(model_dir=train_dir, save_checkpoints_steps=num_batches_per_epoch, save_checkpoints_secs=None,keep_checkpoint_max=num_epochs)
     train_spec = tf.estimator.TrainSpec(input_fn=lambda:input_fn(tf.estimator.ModeKeys.TRAIN,

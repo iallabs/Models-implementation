@@ -13,8 +13,7 @@ def _global_avg_pool2d(inputs, scope=None,outputs=None, data_format="NHWC"):
 @slim.add_arg_scope
 def _conv(inputs, number_filters, kernel_size, strides=1, dropout=None, scope=None, outputs=None):
     with tf.variable_scope(scope, 'conv_op', [inputs]) as v_scope:
-        net = slim.batch_norm(inputs)
-        net = tf.nn.relu(net)
+        net = tf.nn.relu(inputs)
         net = slim.conv2d(net, number_filters, kernel_size)
         if dropout:
             net = tf.nn.dropout(net, keep_prob=dropout)
@@ -80,17 +79,16 @@ def densenet(inputs,
         inputs = tf.transpose(inputs, [0, 3, 1, 2])
     with tf.variable_scope(scope, 'densenetnnn', [inputs, num_classes],reuse=reuse) as v_scope:
         end_points_collection = v_scope.name + '_end_points'
-
-        with slim.arg_scope([slim.batch_norm, slim.dropout],
+        net = inputs
+        with slim.arg_scope([slim.dropout],
                          is_training=is_training), \
                 slim.arg_scope([slim.conv2d, _conv, _block,
                          _dense_block, _transition_block]), \
                                     slim.arg_scope([_conv], dropout=dropout_rate):
-            net = inputs
+            
         # initial convolution
       
             net = slim.conv2d(net, number_filters, 7, stride=2, scope='conv1')
-            net = slim.batch_norm(net)
             net = tf.nn.relu(net)
             net = slim.max_pool2d(net, 3, stride=2, padding='SAME')
 
@@ -112,7 +110,6 @@ def densenet(inputs,
                 scope='dense_block' + str(number_dense_blocks))
             # final block
             with tf.variable_scope('final_block', [inputs]):
-                net = slim.batch_norm(net)
                 net = tf.nn.relu(net)
                 net = _global_avg_pool2d(net, scope='global_avg_pool')
             net = slim.conv2d(net, num_classes, 1,
@@ -151,16 +148,12 @@ def densenet_arg_scope(weight_decay=1e-3,
                        batch_norm_decay=0.99,
                        batch_norm_epsilon=1.1e-5, is_training=True,data_format='NHWC'):
 
-    with slim.arg_scope([slim.conv2d, slim.batch_norm, slim.avg_pool2d, slim.max_pool2d,
+    with slim.arg_scope([slim.conv2d, slim.avg_pool2d, slim.max_pool2d,
                        _block, _global_avg_pool2d], data_format=data_format):
 
         with slim.arg_scope([slim.conv2d],
                          weights_regularizer=slim.l2_regularizer(weight_decay),
                          activation_fn=None,
-                         biases_initializer=None):
-            with slim.arg_scope([slim.batch_norm],
-                          scale=True,
-                          decay=batch_norm_decay,
-                          epsilon=batch_norm_epsilon) as scope:
-                return scope
+                         biases_initializer=None) as scope:
+            return scope
 
