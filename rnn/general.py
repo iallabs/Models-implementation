@@ -68,7 +68,30 @@ def readyfor_sequence_classification(output):
     #Transpose to make the time axis the first dimension:
     output = tf.transpose([1,0,2])
     #tf.gather to select the last frame (output[-1])
-    logit = tf.gather(output, int(output.get_shape()[0]) - 1)
+    last_result = tf.gather(output, int(output.get_shape()[0]) - 1)
     #Add a classification layer (dense layer)
-    return logit
+    return last_result
 
+def classify_and_loss(last_result, labels):
+    """
+    Logit : final result of the last rnn layer, after applying
+    readyfor_sequence_classification. For classification, we care about 
+    the output activation at the last timestep, which is justoutputs[-1]
+    Classification : output a result after the computation of the sequence
+    """
+    num_class = labels.get_shape()[2].value
+    logits = tf.layers.dense(last_result, num_class)
+    predictions = tf.nn.softmax(logits)
+    loss = tf.losses.softmax_cross_entropy(labels, logits)
+    return predictions, loss
+
+def labelling_and_loss(last_result, labels):
+    """
+    Labelling : get a classification for each timestep (each input)
+    """
+    # We share the weights for the softmax layer across all timesteps b
+    # by flattening the first two dimensions of the output tensor
+    #We have a prediction and a label for each time step
+    num_class = labels.get_shape()[2].value
+    logits = tf.layers.dense(last_result, num_class)
+    predictions = tf.nn.softmax(logits)
