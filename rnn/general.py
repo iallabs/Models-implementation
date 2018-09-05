@@ -42,6 +42,7 @@ def build_gru_cell(num_units, dropout):
 def build_multi_rnn(cells):
     """
     Multi RNN cell wraps a sequence of cells into one cell
+    cells : list of rnn classes(basic/lstm/gru)
     """
     return tf.nn.rnn_cell.MultiRNNCell(cells)
 
@@ -89,9 +90,15 @@ def labelling_and_loss(last_result, labels):
     """
     Labelling : get a classification for each timestep (each input)
     """
-    # We share the weights for the softmax layer across all timesteps b
+    # We share the weights for the softmax layer across all timesteps
     # by flattening the first two dimensions of the output tensor
-    #We have a prediction and a label for each time step
+    #We have a prediction and a label for each time step.
+    # We compute the cross entropy for every time step and sequence in the batch
     num_class = labels.get_shape()[2].value
     logits = tf.layers.dense(last_result, num_class)
     predictions = tf.nn.softmax(logits)
+    flat_labels = tf.reshape(labels, [-1] + labels.shape.as_list()[2:])
+    flat_logits = tf.reshape(logits, [-1] + logits.shape.as_list()[2:])
+    loss = tf.losses.softmax_cross_entropy(flat_labels, flat_logits)
+    loss = tf.reduce_mean(loss)
+    return flat_logits, loss
