@@ -34,9 +34,12 @@ checkpoint_file= FLAGS.ckpt
 
 image_size = 224
 #Nombre de classes à prédire
-file_pattern = "chest_%s_*.tfrecord"
-file_pattern_for_counting = "chest"
-num_samples = 100908
+file_pattern = "fruit_%s_*.tfrecord"
+file_pattern_for_counting = "fruit"
+#Chest-X ray num_samples
+#num_samples = 100908
+#Fruit num_samples:
+num_samples = 29184
 #Création d'un dictionnaire pour reférer à chaque label
 #MURA Labels
 """labels_to_name = {
@@ -44,7 +47,7 @@ num_samples = 100908
     'positive':1
 }"""
 #ChestXray labels
-labels_to_name = {
+"""labels_to_name = {
                 0:'No Finding', 
                 1:'Atelectasis',
                 2:'Cardiomegaly', 
@@ -60,13 +63,144 @@ labels_to_name = {
                 12: 'Fibrosis',
                 13: 'Pleural_Thickening',
                 14: 'Hernia'
+                }"""
+labels_to_name = {0:'Apple Braeburn', 
+
+                1:'Apple Golden 1',
+
+                2:'Apple Golden 2', 
+
+                3:'Apple Golden 3',
+
+                4: 'Apple Granny Smith',
+
+                5: 'Apple Red 1',
+
+                6: 'Apple Red 2',
+
+                7: 'Apple Red 3',
+
+                8: 'Apple Red Delicious',
+
+                9: 'Apple Red Yellow',
+
+                10: 'Apricot',
+
+                11: 'Avocado',
+
+                12: 'Avocado ripe',
+
+                13: 'Banana',
+
+                14: 'Banana Red',
+
+                15: 'Cactus fruit',
+
+                16: 'Cantaloupe 1',
+
+                17: 'Cantaloupe 2',
+
+                18: 'Carambula',
+
+                19: 'Cherry 1',
+
+                20: 'Cherry 2',
+
+                21: 'Cherry Rainier',
+
+                22: 'Clementine',
+
+                23: 'Cocos',
+
+                24: 'Dates',
+
+                25: 'Granadilla',
+
+                26: 'Grape Pink',
+
+                27: 'Grape White',
+
+                28: 'Grape White 2',
+
+                29: 'Grapefruit Pink',
+
+                30: 'Grapefruit White',
+
+                31: 'Guava',
+
+                32: 'Huckleberry',
+
+                33: 'Kaki',
+
+                34: 'Kiwi',
+
+                35: 'Kumquats',
+
+                36: 'Lemon',
+
+                37: 'Lemon Meyer',
+
+                38: 'Limes',
+
+                39: 'Litchi',
+
+                40: 'Mandarine',
+
+                41: 'Mango',
+
+                42: 'Maracuja',
+
+                43: 'Melon Piel de Sapo',
+
+                44: 'Nectarine',
+
+                45: 'Orange',
+
+                46: 'Papaya',
+
+                47: 'Passion Fruit',
+
+                48: 'Peach',
+
+                49: 'Peach Flat',
+
+                50: 'Pear',
+
+                51: 'Pear Abate',
+
+                52: 'Pear Monster',
+
+                53: 'Pear Williams',
+
+                54 : 'Pepino',
+
+                55: 'Pineapple',
+
+                56: 'Pitahaya Red',
+
+                57: 'Plum',
+
+                58: 'Pomegranate',
+
+                59: 'Quince',
+
+                60: 'Raspberry',
+
+                61: 'Salak',
+
+                62: 'Strawberry',
+
+                63: 'Tamarillo',
+
+                64: 'Tangelo'
+
                 }
 #==================================#
 #=======Training Informations======#
 #Nombre d'époques pour l'entraînement
 num_epochs = 100
 #State your batch size
-batch_size = 10
+batch_size = 16
 #Learning rate information and configuration (Up to you to experiment)
 initial_learning_rate = 1e-4
 #Decay factor
@@ -96,7 +230,7 @@ def input_fn(mode, dataset_dir,file_pattern, file_pattern_for_counting, labels_t
                                         file_pattern_for_counting=file_pattern_for_counting,
                                         labels_to_name=labels_to_name)
     with tf.name_scope("load_data"):
-        dataset = load_batch_dense(dataset, batch_size, image_size, image_size,
+        dataset = load_batch(dataset, batch_size, image_size, image_size,
                                                         shuffle=train_mode, is_training=train_mode)
     return dataset 
 
@@ -105,7 +239,7 @@ def model_fn(images, onehot_labels, mode, num_classes, checkpoint_state):
     #Create the model inference
     with slim.arg_scope(mobilenet_v2.training_scope(is_training=train_mode, weight_decay=0.0005, stddev=1., bn_decay=0.99)):
             #TODO: Check mobilenet_v1 module, var "excluding
-            logits, _ = mobilenet_v2.mobilenet(images,depth_multiplier=1.0, num_classes = len(labels_to_name))
+            logits, _ = mobilenet_v2.mobilenet(images,depth_multiplier=1.4, num_classes = len(labels_to_name))
     predictions = {
             'classes':tf.argmax(logits, axis=1),
             'probabilities': tf.nn.softmax(logits, name="Softmax")

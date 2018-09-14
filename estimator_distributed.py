@@ -77,16 +77,16 @@ def input_fn(mode, dataset_dir,file_pattern, file_pattern_for_counting, labels_t
                                         file_pattern_for_counting=file_pattern_for_counting,
                                         labels_to_name=labels_to_name)
     with tf.name_scope("load_data"):
-        dataset = load_batch_dense(dataset, batch_size, image_size, image_size, num_epochs,
+        dataset = load_batch_estimator(dataset, batch_size, image_size, image_size, num_epochs,
                                                         shuffle=train_mode, is_training=train_mode)
     return dataset 
 
-def model_fn(images, onehot_labels, num_classes, checkpoint_state, mode):
+def model_fn(dataset, num_classes, checkpoint_state, mode):
     train_mode = mode==tf.estimator.ModeKeys.TRAIN
     #Create the model inference
-    with slim.arg_scope(inception.inception_resnet_v2_arg_scope(weight_decay=5e-4,batch_norm_decay=0.97)):
-    #TODO: Check mobilenet_v1 module, var "excluding
-        logits, _ = inception.inception_resnet_v2(images, num_classes = num_classes,create_aux_logits=False, is_training=train_mode)
+    with slim.arg_scope(mobilenet_v2.training_scope(is_training=train_mode, weight_decay=0.0005, stddev=1., bn_decay=0.99)):
+        #TODO: Check mobilenet_v1 module, var "excluding
+        logits, _ = mobilenet_v2.mobilenet(dataset['image/encoded'],depth_multiplier=1.4, num_classes = len(labels_to_name))
     predictions = {
             'classes':tf.argmax(logits, axis=1),
             'probabilities': tf.nn.softmax(logits, name="Softmax")
@@ -95,19 +95,19 @@ def model_fn(images, onehot_labels, num_classes, checkpoint_state, mode):
     if mode == tf.estimator.ModeKeys.PREDICT:
         return tf.estimator.EstimatorSpec(mode, predictions=predictions)    
     
-    excluding = ['InceptionResnetV2/Logits/Logits', 'InceptionResnetV2/Logits/Dropout']   
+    excluding = ['MobilenetV2/Logits']   
     variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
     if not checkpoint_state and checkpoint_file:
         tf.train.init_from_checkpoint(checkpoint_file, 
                             {v.name.split(':')[0]: v for v in variables_to_restore})
     #Defining losses and regulization ops:
     with tf.name_scope("loss_op"):
-        loss = tf.losses.softmax_cross_entropy(onehot_labels = onehot_labels, logits = logits)
+        loss = tf.losses.softmax_cross_entropy(onehot_labels = dataset['image/class/one_hot'], logits = logits)
         total_loss = tf.losses.get_total_loss()#obtain the regularization losses as well
     #FIXME: Replace classifier function (sigmoid / softmax)
     with tf.name_scope("metrics"):
         pred = predictions['classes']
-        labels = tf.argmax(onehot_labels, 1)
+        labels = tf.argmax(dataset['image/class/one_hot'], 1)
         metrics = {
         'Accuracy': tf.metrics.accuracy(labels, pred),
         'Precision': tf.metrics.precision(labels, pred),
@@ -115,7 +115,7 @@ def model_fn(images, onehot_labels, num_classes, checkpoint_state, mode):
         'AUC': tf.metrics.auc(labels,pred)
         }
         for name, value in metrics.items():
-                summary_name = 'train/%s' % name
+                summary_name = name
                 tf.summary.scalar(summary_name, value[1])
 
         tf.summary.histogram('proba_perso',predictions['probabilities'])
@@ -144,9 +144,10 @@ def main():
     #Define max steps:
     max_step = num_epochs*num_batches_per_epoch
     #Define the distribution method to coordinate a distributed training:
-    distribution = tf.contrib.distribute.MirroredStrategy()
+    #On single machine, use OneDeviceStrategy, for num_gpus>=2, use MirroredStrategy
+    distribution = tf.contrib.distribute.OneDeviceStrategy(device=tf.device("GPU:0"))
     #Define configuration distributed work:
-    run_config = tf.estimator.RunConfig(model_dir=train_dir, save_checkpoints_steps=num_batches_per_epoch, distribute=distribution)
+    run_config = tf.estimator.RunConfig(model_dir=train_dir, save_checkpoints_steps=num_batches_per_epoch, train_distribute=distribution)
     train_spec = tf.estimator.TrainSpec(input_fn=lambda:input_fn(tf.estimator.ModeKeys.TRAIN,
                                                 dataset_dir,file_pattern,
                                                 file_pattern_for_counting, labels_to_name,
@@ -155,10 +156,9 @@ def main():
                                                     dataset_dir, file_pattern,
                                                     file_pattern_for_counting, labels_to_name,
                                                     batch_size,image_size))
-    work = tf.estimator.Estimator(model_fn = lambda features,
-                                labels, mode: model_fn(features, labels, mode, len(labels_to_name), ckpt_state),
-                                model_dir=train_dir,
-                                config=run_config)
+    work = tf.estimator.Estimator(model_fn = lambda features,mode: model_fn(features, mode, len(labels_to_name), ckpt_state),
+                                    model_dir=train_dir,
+                                    config=run_config)
        
     tf.estimator.train_and_evaluate(work, train_spec, eval_spec)
 if __name__ == '__main__':
