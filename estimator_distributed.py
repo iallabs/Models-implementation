@@ -47,7 +47,7 @@ labels_to_name = {
 #Nombre d'époques pour l'entraînement
 num_epochs = 100
 #State your batch size
-batch_size = 2
+batch_size = 10
 #Learning rate information and configuration (Up to you to experiment)
 initial_learning_rate = 1e-4
 #Decay factor
@@ -81,12 +81,13 @@ def input_fn(mode, dataset_dir,file_pattern, file_pattern_for_counting, labels_t
                                                         shuffle=train_mode, is_training=train_mode)
     return dataset 
 
-def model_fn(dataset, num_classes, checkpoint_state, mode):
+def model_fn(features, num_classes, checkpoint_state, mode):
     train_mode = mode==tf.estimator.ModeKeys.TRAIN
+    tf.summary.image("images",features['image/encoded'])
     #Create the model inference
-    with slim.arg_scope(mobilenet_v2.training_scope(is_training=train_mode, weight_decay=0.0005, stddev=1., bn_decay=0.99)):
+    with slim.arg_scope(mobilenet_v2.training_scope(is_training=train_mode, weight_decay=0.0005, stddev=1, bn_decay=0.99)):
         #TODO: Check mobilenet_v1 module, var "excluding
-        logits, _ = mobilenet_v2.mobilenet(dataset['image/encoded'],depth_multiplier=1.4, num_classes = len(labels_to_name))
+        logits, _ = mobilenet_v2.mobilenet(features['image/encoded'],depth_multiplier=1.4, num_classes = len(labels_to_name))
     predictions = {
             'classes':tf.argmax(logits, axis=1),
             'probabilities': tf.nn.softmax(logits, name="Softmax")
@@ -102,12 +103,12 @@ def model_fn(dataset, num_classes, checkpoint_state, mode):
                             {v.name.split(':')[0]: v for v in variables_to_restore})
     #Defining losses and regulization ops:
     with tf.name_scope("loss_op"):
-        loss = tf.losses.softmax_cross_entropy(onehot_labels = dataset['image/class/one_hot'], logits = logits)
+        loss = tf.losses.softmax_cross_entropy(onehot_labels = features['image/class/one_hot'], logits = logits)
         total_loss = tf.losses.get_total_loss()#obtain the regularization losses as well
     #FIXME: Replace classifier function (sigmoid / softmax)
     with tf.name_scope("metrics"):
         pred = predictions['classes']
-        labels = tf.argmax(dataset['image/class/one_hot'], 1)
+        labels = tf.argmax(features['image/class/one_hot'], 1)
         metrics = {
         'Accuracy': tf.metrics.accuracy(labels, pred),
         'Precision': tf.metrics.precision(labels, pred),
@@ -145,7 +146,7 @@ def main():
     max_step = num_epochs*num_batches_per_epoch
     #Define the distribution method to coordinate a distributed training:
     #On single machine, use OneDeviceStrategy, for num_gpus>=2, use MirroredStrategy
-    distribution = tf.contrib.distribute.OneDeviceStrategy(device=tf.device("GPU:0"))
+    distribution = tf.contrib.distribute.OneDeviceStrategy("GPU:0")
     #Define configuration distributed work:
     run_config = tf.estimator.RunConfig(model_dir=train_dir, save_checkpoints_steps=num_batches_per_epoch, train_distribute=distribution)
     train_spec = tf.estimator.TrainSpec(input_fn=lambda:input_fn(tf.estimator.ModeKeys.TRAIN,

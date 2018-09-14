@@ -5,7 +5,7 @@ from tensorflow.python.platform import tf_logging as logging
 import DenseNet.nets.densenet as densenet
 import research.slim.nets.mobilenet.mobilenet_v2 as mobilenet_v2
 import research.slim.nets.inception_resnet_v2 as inception
-from utils.gen_tfrec import load_batch, get_dataset, load_batch_dense
+from utils.gen_tfrec import load_batch, get_dataset, load_batch_dense, load_batch_estimator
 
 import os
 import sys
@@ -34,18 +34,18 @@ checkpoint_file= FLAGS.ckpt
 
 image_size = 224
 #Nombre de classes à prédire
-file_pattern = "fruit_%s_*.tfrecord"
-file_pattern_for_counting = "fruit"
+file_pattern = "MURA_%s_*.tfrecord"
+file_pattern_for_counting = "MURA"
 #Chest-X ray num_samples
 #num_samples = 100908
-#Fruit num_samples:
-num_samples = 29184
+#Fruit num_samples=29184:
+num_samples = 36807
 #Création d'un dictionnaire pour reférer à chaque label
 #MURA Labels
-"""labels_to_name = {
+labels_to_name = {
     'negative':0,
     'positive':1
-}"""
+}
 #ChestXray labels
 """labels_to_name = {
                 0:'No Finding', 
@@ -64,137 +64,7 @@ num_samples = 29184
                 13: 'Pleural_Thickening',
                 14: 'Hernia'
                 }"""
-labels_to_name = {0:'Apple Braeburn', 
 
-                1:'Apple Golden 1',
-
-                2:'Apple Golden 2', 
-
-                3:'Apple Golden 3',
-
-                4: 'Apple Granny Smith',
-
-                5: 'Apple Red 1',
-
-                6: 'Apple Red 2',
-
-                7: 'Apple Red 3',
-
-                8: 'Apple Red Delicious',
-
-                9: 'Apple Red Yellow',
-
-                10: 'Apricot',
-
-                11: 'Avocado',
-
-                12: 'Avocado ripe',
-
-                13: 'Banana',
-
-                14: 'Banana Red',
-
-                15: 'Cactus fruit',
-
-                16: 'Cantaloupe 1',
-
-                17: 'Cantaloupe 2',
-
-                18: 'Carambula',
-
-                19: 'Cherry 1',
-
-                20: 'Cherry 2',
-
-                21: 'Cherry Rainier',
-
-                22: 'Clementine',
-
-                23: 'Cocos',
-
-                24: 'Dates',
-
-                25: 'Granadilla',
-
-                26: 'Grape Pink',
-
-                27: 'Grape White',
-
-                28: 'Grape White 2',
-
-                29: 'Grapefruit Pink',
-
-                30: 'Grapefruit White',
-
-                31: 'Guava',
-
-                32: 'Huckleberry',
-
-                33: 'Kaki',
-
-                34: 'Kiwi',
-
-                35: 'Kumquats',
-
-                36: 'Lemon',
-
-                37: 'Lemon Meyer',
-
-                38: 'Limes',
-
-                39: 'Litchi',
-
-                40: 'Mandarine',
-
-                41: 'Mango',
-
-                42: 'Maracuja',
-
-                43: 'Melon Piel de Sapo',
-
-                44: 'Nectarine',
-
-                45: 'Orange',
-
-                46: 'Papaya',
-
-                47: 'Passion Fruit',
-
-                48: 'Peach',
-
-                49: 'Peach Flat',
-
-                50: 'Pear',
-
-                51: 'Pear Abate',
-
-                52: 'Pear Monster',
-
-                53: 'Pear Williams',
-
-                54 : 'Pepino',
-
-                55: 'Pineapple',
-
-                56: 'Pitahaya Red',
-
-                57: 'Plum',
-
-                58: 'Pomegranate',
-
-                59: 'Quince',
-
-                60: 'Raspberry',
-
-                61: 'Salak',
-
-                62: 'Strawberry',
-
-                63: 'Tamarillo',
-
-                64: 'Tangelo'
-
-                }
 #==================================#
 #=======Training Informations======#
 #Nombre d'époques pour l'entraînement
@@ -230,16 +100,17 @@ def input_fn(mode, dataset_dir,file_pattern, file_pattern_for_counting, labels_t
                                         file_pattern_for_counting=file_pattern_for_counting,
                                         labels_to_name=labels_to_name)
     with tf.name_scope("load_data"):
-        dataset = load_batch(dataset, batch_size, image_size, image_size,
+        dataset = load_batch_estimator(dataset, batch_size, image_size, image_size,
                                                         shuffle=train_mode, is_training=train_mode)
     return dataset 
 
-def model_fn(images, onehot_labels, mode, num_classes, checkpoint_state):
+def model_fn(features, mode, num_classes, checkpoint_state):
     train_mode = mode==tf.estimator.ModeKeys.TRAIN
+    tf.summary.image("images",features['image/encoded'])
     #Create the model inference
     with slim.arg_scope(mobilenet_v2.training_scope(is_training=train_mode, weight_decay=0.0005, stddev=1., bn_decay=0.99)):
             #TODO: Check mobilenet_v1 module, var "excluding
-            logits, _ = mobilenet_v2.mobilenet(images,depth_multiplier=1.4, num_classes = len(labels_to_name))
+            logits, _ = mobilenet_v2.mobilenet(features['image/encoded'],depth_multiplier=1.4, num_classes = len(labels_to_name))
     predictions = {
             'classes':tf.argmax(logits, axis=1),
             'probabilities': tf.nn.softmax(logits, name="Softmax")
@@ -256,11 +127,11 @@ def model_fn(images, onehot_labels, mode, num_classes, checkpoint_state):
                             {v.name.split(':')[0]: v for v in variables_to_restore})
     #Defining losses and regulization ops:
     with tf.name_scope("loss_op"):
-        loss = tf.losses.softmax_cross_entropy(onehot_labels = onehot_labels, logits = logits)
+        loss = tf.losses.softmax_cross_entropy(onehot_labels = features['image/class/one_hot'], logits = logits)
         total_loss = tf.losses.get_total_loss()#obtain the regularization losses as well
     #FIXME: Replace classifier function (sigmoid / softmax)
     pred = predictions['classes']
-    labels = tf.argmax(onehot_labels, 1)
+    labels = tf.argmax(features['image/class/one_hot'], 1)
     metrics = {
     'Accuracy': tf.metrics.accuracy(labels, pred, name="acc_op"),
     'Precision': tf.metrics.precision(labels, pred, name="precision_op"),
@@ -302,7 +173,7 @@ def main():
                                                     dataset_dir, file_pattern,
                                                     file_pattern_for_counting, labels_to_name,
                                                     batch_size,image_size))
-    work = tf.estimator.Estimator(model_fn = lambda features,labels, mode, config: model_fn(features, labels, mode, len(labels_to_name), ckpt_state),
+    work = tf.estimator.Estimator(model_fn = lambda features, mode, config: model_fn(features, mode, len(labels_to_name), ckpt_state),
                                 model_dir=train_dir,
                                 config=run_config)
        
