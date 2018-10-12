@@ -13,7 +13,8 @@ def _global_avg_pool2d(inputs, scope=None,outputs=None, data_format="NHWC"):
 @slim.add_arg_scope
 def _conv(inputs, number_filters, kernel_size, strides=1, dropout=None, scope=None, outputs=None):
     with tf.variable_scope(scope, 'conv_op', [inputs]) as v_scope:
-        net = tf.nn.relu(inputs)
+        net = slim.batch_norm(inputs)
+        net = tf.nn.relu(net)
         net = slim.conv2d(net, number_filters, kernel_size)
         if dropout:
             net = tf.nn.dropout(net, keep_prob=dropout)
