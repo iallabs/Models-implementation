@@ -4,14 +4,16 @@ from research.slim.preprocessing import inception_preprocessing
 import DenseNet.preprocessing.densenet_pre as dp
 slim = tf.contrib.slim
 
-items_to_descriptions = {
-    'image': 'A 3-channel RGB coloured flower image that is either... ....',
-    'label': 'A label that is as such -- fruits'
-}
+
 
 def get_dataset(phase_name, dataset_dir, file_pattern, file_pattern_for_counting, labels_to_name):
     """Creates dataset based on phased_name(train or validation), datatset_dir. """
-    
+    items_to_descriptions = {
+    'image': 'A 3-channel RGB coloured flower image that is either... ....',
+    'height': 'true height',
+    'width':'true width',
+    'label': 'A label that is as such -- fruits'
+}
     #On vérifie si phase_name est 'train' ou 'validation'
     if phase_name not in ['train', 'validation']:
         raise ValueError('The phase_name %s is not recognized. Please input either train or validation as the phase_name' % (phase_name))
@@ -32,15 +34,17 @@ def get_dataset(phase_name, dataset_dir, file_pattern, file_pattern_for_counting
     #Create the keys_to_features dictionary for the decoder    
     feature = {
         'image/encoded':tf.FixedLenFeature((), tf.string, default_value=''),
+        'image/filename':tf.FixedLenFeature((), tf.string, default_value=''),
         'image/height': tf.FixedLenFeature((), tf.int64),
         'image/width': tf.FixedLenFeature((), tf.int64),
-        'image/format': tf.FixedLenFeature((), tf.string, default_value='jpg'),
-        'image/class/label':tf.FixedLenFeature((), tf.int64,default_value=tf.zeros([], dtype=tf.int64)),
+        'image/format': tf.FixedLenFeature((), tf.string, default_value='png'),
+        'image/class/label':tf.FixedLenFeature((), tf.int64),
     }
 
     #Create the items_to_handlers dictionary for the decoder.
     items_to_handlers = {
         'image': slim.tfexample_decoder.Image(),
+        'filename':slim.tfexample_decoder.Tensor('image/filename'),
         'height':slim.tfexample_decoder.Tensor('image/height'),
         'width': slim.tfexample_decoder.Tensor('image/width'),
         'label': slim.tfexample_decoder.Tensor('image/class/label'),
@@ -56,15 +60,14 @@ def get_dataset(phase_name, dataset_dir, file_pattern, file_pattern_for_counting
         data_sources = file_pattern_path,
         decoder = decoder,
         reader = reader,
-        num_readers = 4,
         num_samples = num_samples,
         num_classes = num_class,
         labels_to_name = labels_map,
-        items_to_descriptions = items_to_descriptions)
+        items_to_descriptions=items_to_descriptions)
     
     return dataset
 
-def load_batch(dataset, batch_size, height, width,is_training=True):
+def load_batch(dataset, batch_size, height, width, num_epochs, is_training=True, shuffle=True):
 
     """ Fucntion for loading a train batch 
     OUTPUTS:
@@ -75,21 +78,17 @@ def load_batch(dataset, batch_size, height, width,is_training=True):
     #First, create a provider given by slim:
     provider = slim.dataset_data_provider.DatasetDataProvider(
         dataset,
-        common_queue_capacity = 24 + 3*batch_size,
-        common_queue_min = 24,
-        shuffle = True
+        num_readers=4,
+        shuffle=shuffle,
     )
 
-    raw_image, true_height, true_width, label = provider.get(['image','height','width','label'])
-
-    #Preprocessing using inception_preprocessing:
+    raw_image,img_name, true_height, true_width, label = provider.get(['image','filename','height','width','label'])
+    raw_image = tf.image.convert_image_dtype(raw_image, dtype=tf.float32)  #Preprocessing using inception_preprocessing:
     #Invert true_height and true_width to tf.int32 required by preprocess_image
-    image = inception_preprocessing.preprocess_image(raw_image, tf.cast(true_height,tf.int32), tf.cast(true_width, tf.int32), is_training)
-    image = tf.expand_dims(image, 0)
-    image = tf.image.resize_nearest_neighbor(image,[height,width])
-    image = tf.squeeze(image)
+    image = inception_preprocessing.preprocess_image(raw_image, height, width, is_training)
 
-    one_hot_labels = tf.cast(tf.one_hot(label, depth=dataset.num_classes, on_value=1.0, off_value = 0.0), tf.int64)
+
+    one_hot_labels = tf.cast(tf.one_hot(label, depth=dataset.num_classes, on_value=1.0, off_value = 0.0), tf.int32)
 
     #As for the raw images, we just do a simple reshape to batch it up
     raw_image = tf.expand_dims(raw_image, 0)
@@ -97,17 +96,25 @@ def load_batch(dataset, batch_size, height, width,is_training=True):
     raw_image = tf.squeeze(raw_image)
 
     #Batch up the image by enqueing the tensors internally in a FIFO queue and dequeueing many elements with tf.train.batch.
-    images, raw_images, one_hot_labels, labels = tf.train.shuffle_batch(
-        [image, raw_image, one_hot_labels, label],
-        batch_size = batch_size,
-        num_threads = 4,
-        capacity = 4 * batch_size,
-        min_after_dequeue = batch_size,
-        allow_smaller_final_batch = True)
+    if shuffle:
+        images, raw_images, one_hot_labels, labels = tf.train.shuffle_batch(
+            [image, raw_image, one_hot_labels, label],
+            batch_size = batch_size,
+            num_threads = 4,
+            capacity = 50*batch_size,
+            min_after_dequeue = batch_size,
+            allow_smaller_final_batch = True)
+    else:
+        images, raw_images, one_hot_labels, labels = tf.train.batch(
+            [image, raw_image, one_hot_labels, label],
+            batch_size = batch_size,
+            num_threads = 4,
+            capacity = 50*batch_size,
+            allow_smaller_final_batch = True)
 
-    return images, raw_images, one_hot_labels, labels
+    return images, img_name,raw_images, one_hot_labels, labels
 
-def load_batch_dense(dataset, batch_size, height, width,is_training=True):
+def load_batch_dense(dataset, batch_size, height, width, num_epochs=None, is_training=True, shuffle=True):
 
     """ Function for loading a train batch 
     OUTPUTS:
@@ -118,18 +125,16 @@ def load_batch_dense(dataset, batch_size, height, width,is_training=True):
     #First, create a provider given by slim:
     provider = slim.dataset_data_provider.DatasetDataProvider(
         dataset,
-        common_queue_capacity = 24 + 3*batch_size,
-        common_queue_min = 24,
     )
 
-    raw_image, true_height, true_width, label = provider.get(['image','height','width','label'])
-
+    raw_image, img_name, true_height, true_width, label = provider.get(['image','filename','height','width','label'])
+    raw_image = tf.image.convert_image_dtype(raw_image, dtype=tf.float32)
     #Preprocessing using inception_preprocessing:
    
     image = dp.preprocess_image(raw_image, height, width, is_training)
     
 
-    one_hot_labels = tf.cast(tf.one_hot(label, depth=dataset.num_classes, on_value=1.0, off_value=0.0), tf.int64)
+    one_hot_labels = tf.cast(tf.one_hot(label, depth=dataset.num_classes, on_value=1.0, off_value=0.0), tf.int32)
 
     #As for the raw images, we just do a simple reshape to batch it up
     raw_image = tf.expand_dims(raw_image, 0)
@@ -137,12 +142,12 @@ def load_batch_dense(dataset, batch_size, height, width,is_training=True):
     raw_image = tf.squeeze(raw_image)
 
     #Batch up the image by enqueing the tensors internally in a FIFO queue and dequeueing many elements with tf.train.batch.
-    images, raw_images, one_hot_labels, labels = tf.train.shuffle_batch(
-        [image, raw_image, one_hot_labels, label],
+
+    images,img_names, raw_images, one_hot_labels, labels = tf.train.batch(
+        [image, img_name,raw_image, one_hot_labels, label],
+        num_threads=2,
         batch_size = batch_size,
-        num_threads = 4,
-        capacity = 4 * batch_size,
-        min_after_dequeue = batch_size,
+        capacity = batch_size,
         allow_smaller_final_batch = True)
 
-    return images, raw_images, one_hot_labels, labels
+    return images,img_names, raw_images, one_hot_labels, labels

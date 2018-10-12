@@ -5,13 +5,18 @@ import tensorflow as tf
 
 
 slim = tf.contrib.slim
+#ImageNet RGB mean values (moyenne)0.485, 0.457,0.407
+_R_MEAN = 0.485
+_G_MEAN = 0.457
+_B_MEAN = 0.407
 
-_R_MEAN = 123.68
-_G_MEAN = 116.78
-_B_MEAN = 103.94
+#ImageNet standard deviation (écart-type)0.229, 0.224, 0.225
+_R_STD = 0.229
+_G_STD = 0.224
+_B_STD = 0.225
 
 _RESIZE_SIDE_MIN = 256
-_RESIZE_SIDE_MAX = 256
+_RESIZE_SIDE_MAX = 512
 
 
 def _crop(image, offset_height, offset_width, crop_height, crop_width):
@@ -167,7 +172,7 @@ def _central_crop(image_list, crop_height, crop_width):
 
 
 
-def _mean_image_subtraction(image, means):
+def _mean_image_subtraction_bis(image, means,stds):
 
     """Subtracts the given means from each image channel.
     For example:
@@ -184,18 +189,40 @@ def _mean_image_subtraction(image, means):
         than three or if the number of channels in `image` doesn't match the
         number of values in `means`.
     """
+    image2 = []
+    num_channels = image.get_shape().as_list()[0]
+    if len(means) != num_channels:
+        raise ValueError('len(means) must match the number of channels')
+    for i in range(num_channels):
+        image2.append(tf.divide(tf.subtract(image[i], means[i]),stds[i]))
+    return tf.concat(axis=2, values=image2)
 
+def _mean_image_subtraction(image, means,stds):
+
+    """Subtracts the given means from each image channel.
+    For example:
+        means = [123.68, 116.779, 103.939]
+        image = _mean_image_subtraction(image, means)
+    Note that the rank of `image` must be known.
+    Args:
+        image: a tensor of size [height, width, C].
+        means: a C-vector of values to subtract from each channel.
+    Returns:
+        the centered image.
+    Raises:
+        ValueError: If the rank of `image` is unknown, if `image` has a rank other
+        than three or if the number of channels in `image` doesn't match the
+        number of values in `means`.
+    """
     if image.get_shape().ndims != 3:
         raise ValueError('Input must be of size [height, width, C>0]')
     num_channels = image.get_shape().as_list()[-1]
     if len(means) != num_channels:
         raise ValueError('len(means) must match the number of channels')
-    channels = tf.split(axis=2, num_or_size_splits=num_channels, value=image)
+    channels = tf.split(axis=2, value=image, num_or_size_splits=num_channels)
     for i in range(num_channels):
-        channels[i] -= means[i]
+        channels[i] = (tf.divide(tf.subtract(channels[i], means[i]),stds[i]))
     return tf.concat(axis=2, values=channels)
-
-
 
 
 
@@ -258,6 +285,44 @@ def _aspect_preserving_resize(image, smallest_side):
 
 
 
+def preprocess_for_train_bis(image,
+                        output_height,
+                        output_width,
+                        resize_side_min=_RESIZE_SIDE_MIN,
+                        resize_side_max=_RESIZE_SIDE_MAX):
+
+    """ Preprocesses the given image for training.
+        Note that the actual resizing scale is sampled from
+        [`resize_size_min`, `resize_size_max`].
+    Args:
+        image: A `Tensor` representing an image of arbitrary size.
+        output_height: The height of the image after preprocessing.
+        output_width: The width of the image after preprocessing.
+        resize_side_min: The lower bound for the smallest side of the image for
+        aspect-preserving resizing.
+        resize_side_max: The upper bound for the smallest side of the image for
+        aspect-preserving resizing.
+
+    Returns:
+        A preprocessed image.
+    """
+    tf.summary.image("raw_image", tf.expand_dims(image,0))
+    """resize_side = tf.random_uniform(
+        [], minval=resize_side_min, maxval=resize_side_max+1, dtype=tf.int32)"""
+    
+    """image = _aspect_preserving_resize(image, resize_side_min)
+    image = _central_crop([image], output_height, output_width)[0]"""
+    if image.get_shape().ndims != 3:
+        raise ValueError('Input must be of size [height, width, C>0]')
+    image = tf.split(axis=2, num_or_size_splits=3, value=image)
+    image = tf.image.resize_bilinear(image,[output_height, output_width])
+    image = _mean_image_subtraction_bis(image, [_R_MEAN,_G_MEAN,_B_MEAN], [_R_STD,_G_STD,_B_STD])
+    image = tf.image.random_flip_left_right(image)
+    
+    tf.summary.image("final_image", tf.expand_dims(image,0))
+    return image
+
+
 def preprocess_for_train(image,
                         output_height,
                         output_width,
@@ -279,20 +344,13 @@ def preprocess_for_train(image,
     Returns:
         A preprocessed image.
     """
+    tf.summary.image("raw_image", tf.expand_dims(image,0))
 
-    resize_side = tf.random_uniform(
-        [], minval=resize_side_min, maxval=resize_side_max+1, dtype=tf.int32)
-    image = _aspect_preserving_resize(image, resize_side)
-    """image = tf.image.adjust_contrast(image, 0.8)"""
-    image = _central_crop([image], output_height, output_width)[0]
-    image.set_shape([output_height, output_width, 3])
-    image = tf.to_float(image)
-    image = tf.image.random_flip_left_right(image, seed=1)
-    tf.summary.image("rnd_croped_fliped_image", tf.expand_dims(image,0))
-    return _mean_image_subtraction(image, [_R_MEAN, _G_MEAN, _B_MEAN])
-
-
-
+    image = tf.image.resize_bilinear(tf.expand_dims(image,0),[output_height, output_width])[0]
+    image = tf.image.random_flip_left_right(image)
+    image = _mean_image_subtraction(image, [_R_MEAN,_G_MEAN,_B_MEAN], [_R_STD,_G_STD,_B_STD])
+    tf.summary.image("final_image", tf.expand_dims(image,0))
+    return image
 
 
 def preprocess_for_eval(image, output_height, output_width, resize_side):
@@ -308,14 +366,13 @@ def preprocess_for_eval(image, output_height, output_width, resize_side):
     Returns:
         A preprocessed image.
     """
-    image = _aspect_preserving_resize(image, resize_side)
-    image = _central_crop([image], output_height, output_width)[0]
-    image.set_shape([output_height, output_width, 3])
-    image = tf.to_float(image)
-    tf.summary.image("rnd_croped_fliped_image_eval", tf.expand_dims(image,0))
-    return _mean_image_subtraction(image, [_R_MEAN, _G_MEAN, _B_MEAN])
+    tf.summary.image("raw_image", tf.expand_dims(image,0))
 
+    image = tf.image.resize_bilinear(tf.expand_dims(image,0),[output_height, output_width])[0]
+    image = _mean_image_subtraction(image, [_R_MEAN,_G_MEAN,_B_MEAN], [_R_STD,_G_STD,_B_STD])
 
+    tf.summary.image("final_image", tf.expand_dims(image,0))
+    return image
 
 
 

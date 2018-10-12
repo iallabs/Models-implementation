@@ -111,7 +111,7 @@ venv.bak/
 *.meta
 *.index
 *.pbtxt
-*.cpkt*
+*.ckpt*
 
 # tfevents
 *.tfevents*
@@ -127,3 +127,9 @@ checkpoint
 *.png
 *.jpeg
 *.jpg
+*.txt
+*.data-*
+*.index-*
+*.meta-*
+model-*
+*.pb
