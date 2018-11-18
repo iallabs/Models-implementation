@@ -99,7 +99,7 @@ def model_fn(features, num_classes, checkpoint_state, mode):
     variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
     if not checkpoint_state and checkpoint_file:
         tf.train.init_from_checkpoint(checkpoint_file, 
-                            {v.name.split(':')[1]: v for v in variables_to_restore})
+                            {v.name.split(':')[0]: v for v in variables_to_restore[1:]})
     #Defining losses and regulization ops:
     with tf.name_scope("loss_op"):
         loss = tf.losses.softmax_cross_entropy(onehot_labels = features['image/class/one_hot'], logits = logits)
