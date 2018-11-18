@@ -24,12 +24,12 @@ def get_dataset(phase_name, dataset_dir, file_pattern, file_pattern_for_counting
         #Create the keys_to_features dictionary for the decoder    
         feature = {
             'image/encoded':tf.FixedLenFeature((), tf.string),
-            'image/class/label':tf.FixedLenFeature((), tf.int64),
+            'image/class/id':tf.FixedLenFeature((), tf.int64),
         }
         parsed_example = tf.parse_single_example(example, feature)
         parsed_example['image/encoded'] = tf.image.decode_image(parsed_example['image/encoded'], channels=3)
         parsed_example['image/encoded'] = tf.image.convert_image_dtype(parsed_example['image/encoded'], dtype=tf.float32)
-        labels = parsed_example['image/class/label']
+        labels = parsed_example['image/class/id']
         parsed_example['image/class/one_hot'] = tf.one_hot(labels, depth=num_class, on_value=1.0, off_value = 0.0)
 
         return parsed_example
@@ -96,8 +96,9 @@ def load_batch_estimator(dataset, batch_size, height, width, num_epochs=-1, is_t
         
         return example
     dataset = dataset.map(process_fn)
-    if shuffle:
+    if is_training and shuffle:
         dataset = dataset.shuffle(1000)
+        dataset = dataset.repeat()
     dataset = dataset.repeat(num_epochs)
     dataset = dataset.batch(batch_size)
     return dataset

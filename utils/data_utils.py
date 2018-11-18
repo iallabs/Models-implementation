@@ -135,7 +135,8 @@ def _get_dataset_filename(dataset_dir, split_name, tfrecord_filename, stats=Fals
     if stats:
         output_filename = '%s_%s_stats.tfrecord' % (
                         tfrecord_filename, split_name)
-    output_filename = '%s_%s.tfrecord' % (
+    else:
+        output_filename = '%s_%s.tfrecord' % (
                         tfrecord_filename, split_name)
 
     return os.path.join(dataset_dir, output_filename)

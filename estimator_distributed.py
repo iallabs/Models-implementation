@@ -147,18 +147,17 @@ def main():
     #On single machine, use OneDeviceStrategy, for num_gpus>=2, use MirroredStrategy
 
     #Define configuration distributed work:
-    run_config = tf.estimator.RunConfig(model_dir=train_dir, save_checkpoints_steps=num_batches_per_epoch)
+
     train_spec = tf.estimator.TrainSpec(input_fn=lambda:input_fn(tf.estimator.ModeKeys.TRAIN,
                                                 dataset_dir,file_pattern,
                                                 file_pattern_for_counting, labels_to_name,
-                                                batch_size, image_size),max_steps=max_step)
+                                                batch_size, image_size), max_steps=max_step)
     eval_spec = tf.estimator.EvalSpec(input_fn=lambda:input_fn(tf.estimator.ModeKeys.EVAL,
                                                     dataset_dir, file_pattern,
                                                     file_pattern_for_counting, labels_to_name,
                                                     batch_size,image_size))
     work = tf.estimator.Estimator(model_fn = lambda features,mode: model_fn(features, mode, len(labels_to_name), ckpt_state),
-                                    model_dir=train_dir,
-                                    config=run_config)
+                                    model_dir=train_dir)
        
     tf.estimator.train_and_evaluate(work, train_spec, eval_spec)
 if __name__ == '__main__':
