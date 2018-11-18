@@ -131,9 +131,11 @@ def _get_filenames_and_classes(dataset_dir):
     return photo_filenames, sorted(class_names)
 
 
-def _get_dataset_filename(dataset_dir, split_name, tfrecord_filename):
-
-    output_filename = '%s_%s_-.tfrecord' % (
+def _get_dataset_filename(dataset_dir, split_name, tfrecord_filename, stats=False):
+    if stats:
+        output_filename = '%s_%s_stats.tfrecord' % (
+                        tfrecord_filename, split_name)
+    output_filename = '%s_%s.tfrecord' % (
                         tfrecord_filename, split_name)
 
     return os.path.join(dataset_dir, output_filename)
@@ -169,13 +171,15 @@ def _convert_dataset(split_name, filenames, class_names_to_ids, dataset_dir, tfr
                     image_data = tf.gfile.FastGFile(filenames[i], 'rb').read()
                     class_name = os.path.basename(os.path.dirname(filenames[i]))
                     class_id = class_names_to_ids[class_name]
-                    example = image_to_tfexample(image_data, class_id)
+                    example = image_to_tfexample(image_data,class_id)
                     tfrecord_writer.write(example.SerializeToString())
 
     sys.stdout.write('\n')
     sys.stdout.flush()
 
-def _convert_dataset_bis(split_name, filenames, class_names_to_ids, dataset_dir, tfrecord_filename, batch_size):
+def _convert_dataset_bis(split_name, filenames, class_names_to_ids,
+                         dataset_dir, tfrecord_filename, batch_size,
+                         _NUM_SHARDS):
     """Converts the given filenames to a TFRecord dataset.
     Args:
 
@@ -192,37 +196,41 @@ def _convert_dataset_bis(split_name, filenames, class_names_to_ids, dataset_dir,
     assert split_name in ['train', 'eval']
     max_id = int(math.ceil(len(filenames) / float(batch_size)))
     output_filename = _get_dataset_filename(
-                                dataset_dir, split_name, tfrecord_filename = tfrecord_filename)
+                                dataset_dir, split_name, tfrecord_filename = tfrecord_filename,stats=False)
+    output_filename_stats = _get_dataset_filename(
+                                dataset_dir, split_name, tfrecord_filename = tfrecord_filename,stats=True)
     with tf.Graph().as_default():
         image_reader = ImageReader()
         with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
-                
-                for i in range(len(filenames)):
-                    # Read the filename:
-                    image_data = tf.gfile.FastGFile(filenames[i], 'rb').read()
-                    images_data.append(image_data)
-                    class_name = os.path.basename(os.path.dirname(filenames[i]))
-                    class_name_data.append(class_name)
-                    class_id = class_names_to_ids[class_name]
-                    class_id_data.append(class_id)
-                with tf.Session('') as sess:
-                    for i in range(max_id):
-                        start_ndx = i * batch_size
-                        end_ndx = min((i+1) * batch_size, len(filenames))
-                        gen_mean, gen_stddev, r_mean, r_stddev,\
-                        g_mean, g_stddev, b_mean,\
-                        b_stddev = image_reader.computes_stats(sess, images_data[start_ndx:end_ndx],
-                                                                batch_size)
-                        for j in range(batch_size):
-                            sys.stdout.write('\r>> Converting image %d/%d shard %d' % (
-                            j+start_ndx, len(filenames), i))
-                            sys.stdout.flush()
-                            example = stats_to_tfexample(gen_mean[j],
-                                                        gen_stddev[j], r_mean[j], r_stddev[j],
-                                                        g_mean[j], g_stddev[j], b_mean[j],
-                                                        b_stddev[j],class_name_data[start_ndx+j].encode(),
-                                                        class_id_data[start_ndx+j])
-                            tfrecord_writer.write(example.SerializeToString())
+            for i in range(len(filenames)):
+                # Read the filename:
+                image_data = tf.gfile.FastGFile(filenames[i], 'rb').read()
+                images_data.append(image_data)
+                class_name = os.path.basename(os.path.dirname(filenames[i]))
+                class_name_data.append(class_name)
+                class_id = class_names_to_ids[class_name]
+                class_id_data.append(class_id)
+                example_image = image_to_tfexample(image_data, class_id)
+                tfrecord_writer.write(example_image.SerializeToString())
+        with tf.Session('') as sess:
+            with tf.python_io.TFRecordWriter(output_filename_stats) as tfrecord_writer:
+                for i in range(max_id):
+                    start_ndx = i * batch_size
+                    end_ndx = min((i+1) * batch_size, len(filenames))
+                    gen_mean, gen_stddev, r_mean, r_stddev,\
+                    g_mean, g_stddev, b_mean,\
+                    b_stddev = image_reader.computes_stats(sess, images_data[start_ndx:end_ndx],
+                                                            batch_size)
+                    for j in range(batch_size):
+                        sys.stdout.write('\r>> Converting stats %d/%d shard %d' % (
+                        j+start_ndx, len(filenames), i))
+                        sys.stdout.flush()
+                        example = stats_to_tfexample(gen_mean[j],
+                                                    gen_stddev[j], r_mean[j], r_stddev[j],
+                                                    g_mean[j], g_stddev[j], b_mean[j],
+                                                    b_stddev[j],class_name_data[start_ndx+j].encode(),
+                                                    class_id_data[start_ndx+j])
+                        tfrecord_writer.write(example.SerializeToString())
     sys.stdout.write('\n')
     sys.stdout.flush()
 
