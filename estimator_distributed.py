@@ -97,6 +97,7 @@ def model_fn(features, num_classes, checkpoint_state, mode):
     
     excluding = ['MobilenetV2/Logits']   
     variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
+    print(variables_to_restore[1:])
     if not checkpoint_state and checkpoint_file:
         tf.train.init_from_checkpoint(checkpoint_file, 
                             {v.name.split(':')[0]: v for v in variables_to_restore[1:]})
@@ -140,7 +141,7 @@ def model_fn(features, num_classes, checkpoint_state, mode):
 
 def main():
     #Define the checkpoint state to determine initialization: from pre-trained weigths or recovery
-    ckpt_state = tf.train.get_checkpoint_state(train_dir)       
+    ckpt_state = tf.train.get_checkpoint_state(checkpoint_file)       
     #Define max steps:
     max_step = num_epochs*num_batches_per_epoch
     #Define the distribution method to coordinate a distributed training:
