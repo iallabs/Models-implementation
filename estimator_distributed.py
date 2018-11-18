@@ -146,9 +146,9 @@ def main():
     max_step = num_epochs*num_batches_per_epoch
     #Define the distribution method to coordinate a distributed training:
     #On single machine, use OneDeviceStrategy, for num_gpus>=2, use MirroredStrategy
-    distribution = tf.contrib.distribute.OneDeviceStrategy("GPU:0")
+
     #Define configuration distributed work:
-    run_config = tf.estimator.RunConfig(model_dir=train_dir, save_checkpoints_steps=num_batches_per_epoch, train_distribute=distribution)
+    run_config = tf.estimator.RunConfig(model_dir=train_dir, save_checkpoints_steps=num_batches_per_epoch)
     train_spec = tf.estimator.TrainSpec(input_fn=lambda:input_fn(tf.estimator.ModeKeys.TRAIN,
                                                 dataset_dir,file_pattern,
                                                 file_pattern_for_counting, labels_to_name,

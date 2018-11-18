@@ -6,6 +6,19 @@ import math
 #SOURCE: https://github.com/tensorflow/models/blob/master/research/slim/datasets/download_and_convert_flowers.py
 
 slim = tf.contrib.slim
+def compute_stats_fn(image_data):
+    image_u = tf.image.decode_image(image_data, channels=3)        
+    image_f = tf.image.convert_image_dtype(image_u, dtype=tf.float32)
+    gen_mean, gen_stddev = tf.nn.moments(image_f, axes=[0,1,2])
+    c_image = tf.split(axis=2, num_or_size_splits=3, value=image_f)
+    Rc_image, Gc_image, Bc_image = c_image[0], c_image[1], c_image[2]
+    r_mean, r_stddev = tf.nn.moments(Rc_image, axes=[0,1])
+    g_mean, g_stddev = tf.nn.moments(Gc_image, axes=[0,1])
+    b_mean, b_stddev = tf.nn.moments(Bc_image, axes=[0,1])
+    result = tf.stack([gen_mean, gen_stddev, tf.squeeze(r_mean), tf.squeeze(r_stddev),\
+                        tf.squeeze(g_mean), tf.squeeze(g_stddev),\
+                        tf.squeeze(b_mean), tf.squeeze(b_stddev)])
+    return result
 
 def int64_feature(value):
     """ Returns a TF-feature of int64
@@ -20,21 +33,38 @@ def bytes_feature(value):
     """Return a TF-feature of bytes"""
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
-def image_to_tfexample(image_data, image_format, height, width, class_id):
+def float_feature(value):
+    if not isinstance(value, list):
+        values=[value]
+    return tf.train.Feature(float_list=tf.train.FloatList(value=values))
+
+def stats_to_tfexample(gen_mean,gen_stddev,
+                        r_mean, r_stddev, g_mean, g_stddev,
+                        b_mean,b_stddev, class_name, class_id):
   return tf.train.Example(features=tf.train.Features(feature={
-        'image/encoded': bytes_feature(image_data),
-        'image/format': bytes_feature(image_format),
+        'image/class/str':bytes_feature(class_name),
         'image/class/label': int64_feature(class_id),
-        'image/height': int64_feature(height),
-        'image/width': int64_feature(width),
+        'image/stats/gen_mean': float_feature(gen_mean),
+        'image/stats/gen_stddev': float_feature(gen_stddev),
+        'image/stats/r_mean': float_feature(r_mean),
+        'image/stats/r_stddev': float_feature(r_stddev),
+        'image/stats/g_mean': float_feature(g_mean),
+        'image/stats/g_stddev': float_feature(g_stddev),
+        'image/stats/b_mean': float_feature(b_mean),
+        'image/stats/b_stddev': float_feature(b_stddev)
     }))
 
+def image_to_tfexample(image_data, label):
+    return tf.train.Example(features=tf.train.Features(feature={
+        "image/encoded": bytes_feature(image_data),
+        "image/class/id": int64_feature(label)
+    }))
 class ImageReader(object):
     """Helper class that provides TensorFlow image coding utilities."""
     def __init__(self):
         # Initializes function that decodes RGB JPEG data.
         self._decode_jpeg_data = tf.placeholder(dtype=tf.string)
-        self._decode_jpeg = tf.image.decode_jpeg(self._decode_jpeg_data, channels=3)
+        self._decode_jpeg = tf.image.decode_image(self._decode_jpeg_data, channels=3)
 
     def read_image_dims(self, sess, image_data):
         image = self.decode_jpeg(sess, image_data)
@@ -46,6 +76,20 @@ class ImageReader(object):
         assert len(image.shape) == 3
         assert image.shape[2] == 3
         return image
+    
+    def computes_stats(self, sess, image_data,batch_size):
+        images = tf.placeholder(dtype=tf.string, shape=[batch_size])
+        results = tf.map_fn(lambda x: compute_stats_fn(x), images,dtype=tf.float32)
+        alpha = sess.run(results,
+                            feed_dict={images:image_data})
+        GEN_mean, GEN_stddev, R_mean,\
+        R_stddev, G_mean, G_stddev, B_mean,\
+        B_stddev = (alpha[:,s] for s in range(8))
+        print(len(GEN_mean))
+
+        return GEN_mean, GEN_stddev, R_mean,\
+                R_stddev, G_mean, G_stddev, B_mean,\
+                B_stddev
 
 def _get_filenames_and_classes(dataset_dir):
 
@@ -65,9 +109,8 @@ def _get_filenames_and_classes(dataset_dir):
     # 	if os.path.isdir(name):
     # 		dataset_main_folder_list.append(name)
 
-    dataset_main_folder_list = [name for name in os.listdir(dataset_dir) if os.path.isdir(os.path.join(dataset_dir,name))]
-    print(dataset_main_folder_list)
-    dataset_root = os.path.join(dataset_dir, dataset_main_folder_list[1])
+    dataset_main_folder_list = [name for name in os.listdir(dataset_dir) if os.path.isdir(os.path.join(dataset_dir,name))] 
+    dataset_root = os.path.join(dataset_dir, dataset_main_folder_list[0])
 
     directories = []
 
@@ -85,14 +128,13 @@ def _get_filenames_and_classes(dataset_dir):
         for filename in os.listdir(directory):
             path = os.path.join(directory, filename)
             photo_filenames.append(path)
-
     return photo_filenames, sorted(class_names)
 
 
-def _get_dataset_filename(dataset_dir, split_name, shard_id, tfrecord_filename, _NUM_SHARDS):
+def _get_dataset_filename(dataset_dir, split_name, tfrecord_filename):
 
-    output_filename = '%s_%s_%05d-of-%05d.tfrecord' % (
-                        tfrecord_filename, split_name, shard_id, _NUM_SHARDS)
+    output_filename = '%s_%s_-.tfrecord' % (
+                        tfrecord_filename, split_name)
 
     return os.path.join(dataset_dir, output_filename)
 
@@ -109,45 +151,78 @@ def _convert_dataset(split_name, filenames, class_names_to_ids, dataset_dir, tfr
 
     """
 
-    assert split_name in ['train', 'validation']
+    assert split_name in ['train', 'eval']
     num_per_shard = int(math.ceil(len(filenames) / float(_NUM_SHARDS)))
 
     with tf.Graph().as_default():
-        image_reader = ImageReader()
-
-        with tf.Session('') as sess:
-            for shard_id in range(_NUM_SHARDS):
-                output_filename = _get_dataset_filename(
-                                dataset_dir, split_name, shard_id, tfrecord_filename = tfrecord_filename, _NUM_SHARDS = _NUM_SHARDS)
-
-                with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
-                    start_ndx = shard_id * num_per_shard
-                    end_ndx = min((shard_id+1) * num_per_shard, len(filenames))
-                    for i in range(start_ndx, end_ndx):
-                        sys.stdout.write('\r>> Converting image %d/%d shard %d' % (
-                        i+1, len(filenames), shard_id))
-                        sys.stdout.flush()
-
-                        # Read the filename:
-                        image_data = tf.gfile.FastGFile(filenames[i], 'rb').read()
-                        height, width = image_reader.read_image_dims(sess, image_data)
-                        class_name = os.path.basename(os.path.dirname(filenames[i]))
-                        class_id = class_names_to_ids[class_name]
-                        print(class_name)
-                        print(filenames[i])
-                        example = image_to_tfexample(image_data, 'jpg'.encode(), height, width, class_id)
-                        tfrecord_writer.write(example.SerializeToString())
+        for shard_id in range(_NUM_SHARDS):
+            output_filename = _get_dataset_filename(
+                            dataset_dir, split_name, tfrecord_filename = tfrecord_filename)
+            start_ndx = shard_id * num_per_shard
+            end_ndx = min((shard_id+1) * num_per_shard, len(filenames))
+            with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
+                for i in range(start_ndx, end_ndx):
+                    sys.stdout.write('\r>> Converting image %d/%d shard %d' % (
+                    i+1, len(filenames), shard_id))
+                    sys.stdout.flush()
+                    # Read the filename:
+                    image_data = tf.gfile.FastGFile(filenames[i], 'rb').read()
+                    class_name = os.path.basename(os.path.dirname(filenames[i]))
+                    class_id = class_names_to_ids[class_name]
+                    example = image_to_tfexample(image_data, class_id)
+                    tfrecord_writer.write(example.SerializeToString())
 
     sys.stdout.write('\n')
     sys.stdout.flush()
 
+def _convert_dataset_bis(split_name, filenames, class_names_to_ids, dataset_dir, tfrecord_filename, batch_size):
+    """Converts the given filenames to a TFRecord dataset.
+    Args:
 
-def _dataset_exists(dataset_dir, _NUM_SHARDS, output_filename):
-    for split_name in ['train', 'validation']:
-        for shard_id in range(_NUM_SHARDS):
-            tfrecord_filename = _get_dataset_filename(
-            dataset_dir, split_name, shard_id, output_filename, _NUM_SHARDS)
-            if not tf.gfile.Exists(tfrecord_filename):
-                return False
+        split_name: The name of the dataset, either 'train' or 'validation'.
+        filenames: A list of absolute paths to png or jpg images.
+        class_names_to_ids: A dictionary from class names (strings) to ids
+        (integers).
+        dataset_dir: The directory where the converted datasets are stored.
 
-    return True
+    """
+    images_data = []
+    class_name_data = []
+    class_id_data = []
+    assert split_name in ['train', 'eval']
+    max_id = int(math.ceil(len(filenames) / float(batch_size)))
+    output_filename = _get_dataset_filename(
+                                dataset_dir, split_name, tfrecord_filename = tfrecord_filename)
+    with tf.Graph().as_default():
+        image_reader = ImageReader()
+        with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
+                
+                for i in range(len(filenames)):
+                    # Read the filename:
+                    image_data = tf.gfile.FastGFile(filenames[i], 'rb').read()
+                    images_data.append(image_data)
+                    class_name = os.path.basename(os.path.dirname(filenames[i]))
+                    class_name_data.append(class_name)
+                    class_id = class_names_to_ids[class_name]
+                    class_id_data.append(class_id)
+                with tf.Session('') as sess:
+                    for i in range(max_id):
+                        start_ndx = i * batch_size
+                        end_ndx = min((i+1) * batch_size, len(filenames))
+                        gen_mean, gen_stddev, r_mean, r_stddev,\
+                        g_mean, g_stddev, b_mean,\
+                        b_stddev = image_reader.computes_stats(sess, images_data[start_ndx:end_ndx],
+                                                                batch_size)
+                        for j in range(batch_size):
+                            sys.stdout.write('\r>> Converting image %d/%d shard %d' % (
+                            j+start_ndx, len(filenames), i))
+                            sys.stdout.flush()
+                            example = stats_to_tfexample(gen_mean[j],
+                                                        gen_stddev[j], r_mean[j], r_stddev[j],
+                                                        g_mean[j], g_stddev[j], b_mean[j],
+                                                        b_stddev[j],class_name_data[start_ndx+j].encode(),
+                                                        class_id_data[start_ndx+j])
+                            tfrecord_writer.write(example.SerializeToString())
+    sys.stdout.write('\n')
+    sys.stdout.flush()
+
