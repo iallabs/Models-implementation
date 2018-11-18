@@ -201,7 +201,7 @@ def _convert_dataset_bis(split_name, filenames, class_names_to_ids,
                                 dataset_dir, split_name, tfrecord_filename = tfrecord_filename,stats=True)
     with tf.Graph().as_default():
         image_reader = ImageReader()
-        with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
+        with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer_1:
             for i in range(len(filenames)):
                 # Read the filename:
                 image_data = tf.gfile.FastGFile(filenames[i], 'rb').read()
@@ -211,7 +211,7 @@ def _convert_dataset_bis(split_name, filenames, class_names_to_ids,
                 class_id = class_names_to_ids[class_name]
                 class_id_data.append(class_id)
                 example_image = image_to_tfexample(image_data, class_id)
-                tfrecord_writer.write(example_image.SerializeToString())
+                tfrecord_writer_1.write(example_image.SerializeToString())
         with tf.Session('') as sess:
             with tf.python_io.TFRecordWriter(output_filename_stats) as tfrecord_writer:
                 for i in range(max_id):

@@ -63,10 +63,10 @@ def main():
 
 
     # First, convert the training and validation sets.
-    _convert_dataset_bis('train', training_filenames, class_names_to_ids,
-                     dataset_dir = FLAGS.dataset_dir, tfrecord_filename = FLAGS.tfrecord_filename, batch_size=500, _NUM_SHARDS=FLAGS.num_shards)
-    _convert_dataset_bis('eval', validation_filenames, class_names_to_ids,
-                     dataset_dir = FLAGS.dataset_dir, tfrecord_filename = FLAGS.tfrecord_filename,  batch_size=100, _NUM_SHARDS=FLAGS.num_shards)
+    _convert_dataset('train', training_filenames, class_names_to_ids,
+                     dataset_dir = FLAGS.dataset_dir, tfrecord_filename = FLAGS.tfrecord_filename, _NUM_SHARDS=FLAGS.num_shards)
+    _convert_dataset('eval', validation_filenames, class_names_to_ids,
+                     dataset_dir = FLAGS.dataset_dir, tfrecord_filename = FLAGS.tfrecord_filename, _NUM_SHARDS=FLAGS.num_shards)
 
     print('\n Finished converting the %s dataset!' % (FLAGS.tfrecord_filename))
 

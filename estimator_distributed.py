@@ -4,7 +4,6 @@ import tensorflow as tf
 from tensorflow.python.platform import tf_logging as logging
 import DenseNet.nets.densenet as densenet
 import research.slim.nets.mobilenet.mobilenet_v2 as mobilenet_v2
-import research.slim.nets.inception_resnet_v2 as inception
 from utils.gen_tfrec import load_batch, get_dataset, load_batch_dense, load_batch_estimator
 
 import os
@@ -17,7 +16,7 @@ slim = tf.contrib.slim
 flags = tf.app.flags
 flags.DEFINE_float('gpu_p', 1.0, 'Float: allow gpu growth value to pass in config proto')
 flags.DEFINE_string('dataset_dir','','String: Your dataset directory')
-flags.DEFINE_string('train_dir', 'train_fruit/training', 'String: Your train directory')
+flags.DEFINE_string('train_dir', 'train', 'String: Your train directory')
 flags.DEFINE_boolean('log_device_placement', True,
                             """Whether to log device placement.""")
 flags.DEFINE_string('ckpt','train_fruit/net/mobilenet_v1_0.5_160.ckpt','String: Your dataset directory')
@@ -34,13 +33,13 @@ checkpoint_file= FLAGS.ckpt
 
 image_size = 224
 #Nombre de classes à prédire
-file_pattern = "MURA_%s_*.tfrecord"
-file_pattern_for_counting = "MURA"
-num_samples = 36807
+file_pattern = "catvsdog_%s_*.tfrecord"
+file_pattern_for_counting = "catvsdog"
+num_samples = 22500
 #Création d'un dictionnaire pour reférer à chaque label
 labels_to_name = {
-    'negative':0,
-    'positive':1
+    'cat':0,
+    'dog':1
 }
 #==================================#
 #=======Training Informations======#
