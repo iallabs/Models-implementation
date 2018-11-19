@@ -13,7 +13,6 @@ def get_dataset(phase_name, dataset_dir, file_pattern, file_pattern_for_counting
     if phase_name not in ['train', 'validation']:
         raise ValueError('The phase_name %s is not recognized. Please input either train or validation as the phase_name' % (phase_name))
 
-    file_pattern_path = os.path.join(dataset_dir, file_pattern%(phase_name))
     #TODO: Remove counting num_samples. num_samples have to be fixed before
     #Compte le nombre total d'examples dans tous les fichiers
     file_pattern_for_counting = file_pattern_for_counting + '_' + phase_name
@@ -30,7 +29,6 @@ def get_dataset(phase_name, dataset_dir, file_pattern, file_pattern_for_counting
         parsed_example['image/encoded'] = tf.image.decode_image(parsed_example['image/encoded'], channels=3)
         parsed_example['image/encoded'] = tf.image.convert_image_dtype(parsed_example['image/encoded'], dtype=tf.float32)
         labels = parsed_example['image/class/id']
-        parsed_example['image/class/one_hot'] = tf.one_hot(labels, depth=num_class, on_value=1.0, off_value = 0.0)
 
         return parsed_example
     dataset = dataset.map(parse_fn)
