@@ -125,8 +125,8 @@ def model_fn(features, mode):
     
         #Defining losses and regulization ops:
     with tf.name_scope("loss_op"):
-        total_loss = tf.losses.sparse_softmax_cross_entropy(labels = labels, logits = logits)
-        #total_loss = tf.losses.get_total_loss() #obtain the regularization losses as well
+        loss = tf.losses.sparse_softmax_cross_entropy(labels = labels, logits = logits)
+        total_loss = tf.losses.get_total_loss() #obtain the regularization losses as well
     #FIXME: Replace classifier function (sigmoid / softmax)
     if mode != tf.estimator.ModeKeys.PREDICT:
         metrics = {
