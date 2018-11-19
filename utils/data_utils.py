@@ -1,4 +1,5 @@
 import tensorflow as tf
+import PyPDF2
 import os
 import sys
 import math
@@ -20,6 +21,16 @@ def compute_stats_fn(image_data):
                         tf.squeeze(b_mean), tf.squeeze(b_stddev)])
     return result
 
+def parse_pdf(pdf_filename):
+    """Function to parse PDF file
+    It'll return a list of images extracted from
+    the PDF, the number of pages(?) and also
+    the filename
+    """
+    pdf_file = open(pdf_filename)
+    read_pdf = PyPDF2.PdfFileReader(pdf_file)
+    pass
+    
 def int64_feature(value):
     """ Returns a TF-feature of int64
         Args: value: scalar or list of values
@@ -41,7 +52,7 @@ def float_feature(value):
 def stats_to_tfexample(gen_mean,gen_stddev,
                         r_mean, r_stddev, g_mean, g_stddev,
                         b_mean,b_stddev, class_name, class_id):
-  return tf.train.Example(features=tf.train.Features(feature={
+    return tf.train.Example(features=tf.train.Features(feature={
         'image/class/str':bytes_feature(class_name),
         'image/class/label': int64_feature(class_id),
         'image/stats/gen_mean': float_feature(gen_mean),
@@ -59,6 +70,27 @@ def image_to_tfexample(image_data, label):
         "image/encoded": bytes_feature(image_data),
         "image/class/id": int64_feature(label)
     }))
+
+#TODO: Waiting for URL construction to decide how to split the URL
+# For now, we're going to write each pdf data and it's corresponding information
+#for each example
+def pdf_to_tfexample(pdf_data, repo, typo, spec, origin, url):
+    #We'll assume that we're working with python2.7 version
+    # in order to satisfy the Apache Beam dependencie
+    repo, typo, spec,\
+    origin, url = repo.encode(), typo.encode(),\
+                    spec.encode(), origin.encode(),\
+                    url.encode()
+
+    return tf.train.Example(features=tf.train.Features(feature={
+        "image/encoded": bytes_feature(pdf_data),
+        "image/class/repo": bytes_feature(repo),
+        "image/class/typo": bytes_feature(typo),
+        "image/class/spec": bytes_feature(spec),
+        "image/class/origin": bytes_feature(origin),
+        "image/filename" : bytes_feature(url)
+    }))
+
 class ImageReader(object):
     """Helper class that provides TensorFlow image coding utilities."""
     def __init__(self):
@@ -226,6 +258,7 @@ def _convert_dataset_bis(split_name, filenames, class_names_to_ids,
                         sys.stdout.write('\r>> Converting stats %d/%d shard %d' % (
                         j+start_ndx, len(filenames), i))
                         sys.stdout.flush()
+                        #Py3: use encode("utf-8")
                         example = stats_to_tfexample(gen_mean[j],
                                                     gen_stddev[j], r_mean[j], r_stddev[j],
                                                     g_mean[j], g_stddev[j], b_mean[j],
