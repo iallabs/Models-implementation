@@ -13,9 +13,12 @@ def compute_stats_fn(image_data):
     gen_mean, gen_stddev = tf.nn.moments(image_f, axes=[0,1,2])
     c_image = tf.split(axis=2, num_or_size_splits=3, value=image_f)
     Rc_image, Gc_image, Bc_image = c_image[0], c_image[1], c_image[2]
-    r_mean, r_stddev = tf.nn.moments(Rc_image, axes=[0,1])
-    g_mean, g_stddev = tf.nn.moments(Gc_image, axes=[0,1])
-    b_mean, b_stddev = tf.nn.moments(Bc_image, axes=[0,1])
+    r_mean, r_var = tf.nn.moments(Rc_image, axes=[0,1])
+    g_mean, g_var = tf.nn.moments(Gc_image, axes=[0,1])
+    b_mean, b_var = tf.nn.moments(Bc_image, axes=[0,1])
+    r_stddev = tf.sqrt(r_var)
+    g_stddev = tf.sqrt(g_var)
+    b_stddev = tf.sqrt(b_var)
     result = tf.stack([gen_mean, gen_stddev, tf.squeeze(r_mean), tf.squeeze(r_stddev),\
                         tf.squeeze(g_mean), tf.squeeze(g_stddev),\
                         tf.squeeze(b_mean), tf.squeeze(b_stddev)])
