@@ -35,13 +35,13 @@ checkpoint_file = os.path.join(checkpoint_dir, "mobilenet_v2_1.4_224.ckpt")
 ckpt_state = tf.train.get_checkpoint_state(train_dir)
 image_size = 224
 #Nombre de classes à prédire
-file_pattern = "catvsdog_%s_*.tfrecord"
-file_pattern_for_counting = "catvsdog"
+file_pattern = "mura_%s.tfrecord"
+file_pattern_for_counting = "mura"
 #Chest-X ray num_samples
 #num_samples = 100908
 #Fruit num_samples=29184:
 #MURA num_samples = 36807
-num_samples = 22500
+num_samples = 36807
 #Création d'un dictionnaire pour reférer à chaque label
 #MURA Labels
 labels_to_name = {
@@ -72,7 +72,7 @@ labels_to_name = {
 #Nombre d'époques pour l'entraînement
 num_epochs = 100
 #State your batch size
-batch_size = 16
+batch_size = 8
 #Learning rate information and configuration (Up to you to experiment)
 initial_learning_rate = 1e-4
 #Decay factor
@@ -92,12 +92,12 @@ if not os.path.exists(summary_dir):
 #Adding the graph:
 #Set the verbosity to INFO level
 tf.reset_default_graph()
-tf.logging.set_verbosity(tf.logging.INFO)
+tf.logging.set_verbosity(tf.logging.DEBUG)
 
 def input_fn(mode, dataset_dir,file_pattern, file_pattern_for_counting, labels_to_name, batch_size, image_size):
     train_mode = mode==tf.estimator.ModeKeys.TRAIN
     with tf.name_scope("dataset"):
-        dataset = get_dataset("train" if train_mode else "validation",
+        dataset = get_dataset("train" if train_mode else "eval",
                                         dataset_dir, file_pattern=file_pattern,
                                         file_pattern_for_counting=file_pattern_for_counting,
                                         labels_to_name=labels_to_name)
@@ -115,7 +115,7 @@ def model_fn(features, mode):
             logits, _ = mobilenet_v2.mobilenet(features['image/encoded'],depth_multiplier=1.4, num_classes = len(labels_to_name))
     excluding = ['MobilenetV2/Logits']   
     variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
-    if (not ckpt_state) and checkpoint_file:
+    if (not ckpt_state) and checkpoint_file and train_mode:
         variables_to_restore = variables_to_restore[1:]
         tf.train.init_from_checkpoint(checkpoint_file, 
                             {v.name.split(':')[0]: v for v in variables_to_restore})

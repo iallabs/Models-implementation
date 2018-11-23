@@ -2,7 +2,7 @@ import random
 
 import tensorflow as tf
 
-from utils.utils_csv import _dataset_exists, _get_infos, _convert_dataset
+from utils.utils_csv import _dataset_exists, _get_infos, _convert_dataset_bis
 
 import pandas as pd
 
@@ -26,9 +26,9 @@ flags.DEFINE_string('tfrecord_filename', None, 'String: The output filename to n
 FLAGS = flags.FLAGS
 
 #TODO change this dict into names to ids
-"""class_names_to_ids = {  'negative': 0,
-                        'positive':1}"""
-class_names_to_ids = {
+class_names_to_ids = {'negative': 0,
+                    'positive':1}
+"""class_names_to_ids = {
                 'No Finding':0, 
                 'Atelectasis':1,
                 'Cardiomegaly':2, 
@@ -44,7 +44,7 @@ class_names_to_ids = {
                 'Fibrosis':12,
                 'Pleural_Thickening':13,
                 'Hernia':14
-                }
+                }"""
 
 def main():
     #==============================================================CHECKS==========================================================================
@@ -94,11 +94,10 @@ def main():
 
 
     # First, convert the training and validation sets.
-    _convert_dataset('train', training_frame, class_names_to_ids,
-                     dataset_dir = FLAGS.dataset_dir, tfrecord_filename = FLAGS.tfrecord_filename, _NUM_SHARDS = FLAGS.num_shards)
-
-    _convert_dataset('validation', valid_frame, class_names_to_ids,
-                     dataset_dir = FLAGS.dataset_dir, tfrecord_filename = FLAGS.tfrecord_filename, _NUM_SHARDS = FLAGS.num_shards)
+    _convert_dataset_bis('train', photos_train, class_names_to_ids,
+                     dataset_dir = FLAGS.dataset_dir, tfrecord_filename = FLAGS.tfrecord_filename, batch_size=500, _NUM_SHARDS=FLAGS.num_shards)
+    _convert_dataset_bis('eval', photos_valid, class_names_to_ids,
+                     dataset_dir = FLAGS.dataset_dir, tfrecord_filename = FLAGS.tfrecord_filename,batch_size=100, _NUM_SHARDS=FLAGS.num_shards)
 
     print('\nFinished converting the %s dataset!' % (FLAGS.tfrecord_filename))
 

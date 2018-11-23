@@ -7,11 +7,11 @@ slim = tf.contrib.slim
 #NOTE: This code has to be upgraded: false images transmitted to network
 
 def get_dataset(phase_name, dataset_dir, file_pattern, file_pattern_for_counting, labels_to_name):
-    """Creates dataset based on phased_name(train or validation), datatset_dir. """
+    """Creates dataset based on phased_name(train or evaluation), datatset_dir. """
 
     #On vérifie si phase_name est 'train' ou 'validation'
-    if phase_name not in ['train', 'validation']:
-        raise ValueError('The phase_name %s is not recognized. Please input either train or validation as the phase_name' % (phase_name))
+    if phase_name not in ['train', 'eval']:
+        raise ValueError('The phase_name %s is not recognized. Please input either train or eval as the phase_name' % (phase_name))
 
     #TODO: Remove counting num_samples. num_samples have to be fixed before
     #Compte le nombre total d'examples dans tous les fichiers
