@@ -23,12 +23,12 @@ def get_dataset(phase_name, dataset_dir, file_pattern, file_pattern_for_counting
         #Create the keys_to_features dictionary for the decoder    
         feature = {
             'image/encoded':tf.FixedLenFeature((), tf.string),
-            'image/class/id':tf.FixedLenFeature((), tf.int64),
+            'image/class/label':tf.FixedLenFeature((), tf.int64),
         }
         parsed_example = tf.parse_single_example(example, feature)
         parsed_example['image/encoded'] = tf.image.decode_image(parsed_example['image/encoded'], channels=3)
         parsed_example['image/encoded'] = tf.image.convert_image_dtype(parsed_example['image/encoded'], dtype=tf.float32)
-        labels = parsed_example['image/class/id']
+        labels = parsed_example['image/class/label']
 
         return parsed_example
     dataset = dataset.map(parse_fn)
