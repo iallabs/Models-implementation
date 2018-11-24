@@ -89,7 +89,7 @@ def stats_to_tfexample(gen_mean,gen_stddev,
 def image_to_tfexample(image_data, label):
     return tf.train.Example(features=tf.train.Features(feature={
         "image/encoded": bytes_feature(image_data),
-        "image/class/id": int64_feature(label)
+        "image/class/label": int64_feature(label)
     }))
 
 #TODO: Waiting for URL construction to decide how to split the URL
