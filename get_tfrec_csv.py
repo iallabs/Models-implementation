@@ -2,7 +2,7 @@ import random
 
 import tensorflow as tf
 
-from utils.utils_csv import _dataset_exists, _get_infos, _convert_dataset_bis
+from utils.utils_csv import _dataset_exists, _get_infos, _convert_dataset
 
 import pandas as pd
 
@@ -14,10 +14,10 @@ flags = tf.app.flags
 flags.DEFINE_string('dataset_dir', None, 'String: Your dataset directory')
 
 # The number of images in the validation set. You would have to know the total number of examples in advance. This is essentially your evaluation dataset.
-flags.DEFINE_float('validation_size', 0.1, 'Float: The proportion of examples in the dataset to be used for validation')
+flags.DEFINE_float('validation_size', 0.15, 'Float: The proportion of examples in the dataset to be used for validation')
 
 # The number of shards to split the dataset into
-flags.DEFINE_integer('num_shards', 2, 'Int: Number of shards to split the TFRecord files')
+flags.DEFINE_integer('num_shards', 10, 'Int: Number of shards to split the TFRecord files')
 
 
 #Output filename for the naming the TFRecord file
@@ -26,9 +26,7 @@ flags.DEFINE_string('tfrecord_filename', None, 'String: The output filename to n
 FLAGS = flags.FLAGS
 
 #TODO change this dict into names to ids
-class_names_to_ids = {'negative': 0,
-                    'positive':1}
-"""class_names_to_ids = {
+class_names_to_ids = {
                 'No Finding':0, 
                 'Atelectasis':1,
                 'Cardiomegaly':2, 
@@ -44,7 +42,7 @@ class_names_to_ids = {'negative': 0,
                 'Fibrosis':12,
                 'Pleural_Thickening':13,
                 'Hernia':14
-                }"""
+                }
 
 def main():
     #==============================================================CHECKS==========================================================================
@@ -70,34 +68,19 @@ def main():
         return None
 
     #==============================================================END OF CHECKS===================================================================
-    """csv_name = "train_image_paths.csv"
-    #Get a pandas dataframe containing each image path and text label
-    training_filenames = _get_infos(FLAGS.dataset_dir, csv_name)
-    training_frame = pd.DataFrame.sample(training_filenames, frac=1, random_state=1)
-    print(len(training_frame))
-
-    csv_eval_name = "valid_image_paths.csv"
-    #Get a pandas dataframe containing each image path and text label
-    valid_filenames = _get_infos(FLAGS.dataset_dir, csv_eval_name)
-    valid_frame = pd.DataFrame(valid_filenames)
-    print(len(valid_frame))"""
     grouped=_get_infos(FLAGS.dataset_dir,"Data_Entry_2017.csv")
     # Divide the training datasets into train and test:(For ChestX like datasets)
     
     training_filenames = pd.DataFrame.sample(grouped, frac=(1-FLAGS.validation_size))
-    training_frame = pd.DataFrame.sample(training_filenames, frac=1,random_state=3)
-    print(len(training_frame))
+    training_filenames = pd.DataFrame.sample(training_filenames, frac=1,random_state=3)
     validation_filenames = grouped.loc[~grouped.index.isin(training_filenames.index), :]
-    valid_frame = pd.DataFrame.sample(validation_filenames, frac=1,random_state=3)
-    print(len(valid_frame))
-
-
+    valid_filenames = pd.DataFrame.sample(validation_filenames, frac=1,random_state=3)
 
     # First, convert the training and validation sets.
-    _convert_dataset_bis('train', photos_train, class_names_to_ids,
-                     dataset_dir = FLAGS.dataset_dir, tfrecord_filename = FLAGS.tfrecord_filename, batch_size=500, _NUM_SHARDS=FLAGS.num_shards)
-    _convert_dataset_bis('eval', photos_valid, class_names_to_ids,
-                     dataset_dir = FLAGS.dataset_dir, tfrecord_filename = FLAGS.tfrecord_filename,batch_size=100, _NUM_SHARDS=FLAGS.num_shards)
+    _convert_dataset('train', training_filenames, class_names_to_ids,
+                     dataset_dir = FLAGS.dataset_dir, tfrecord_filename = FLAGS.tfrecord_filename, _NUM_SHARDS=FLAGS.num_shards)
+    _convert_dataset('eval', valid_filenames, class_names_to_ids,
+                     dataset_dir = FLAGS.dataset_dir, tfrecord_filename = FLAGS.tfrecord_filename, _NUM_SHARDS=1)
 
     print('\nFinished converting the %s dataset!' % (FLAGS.tfrecord_filename))
 

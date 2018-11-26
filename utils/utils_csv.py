@@ -14,21 +14,24 @@ def int64_feature(value):
         return: TF-Feature"""
     if not isinstance(value, (tuple, list)):
         values = [value]
-
+    else:
+        values = value
     return tf.train.Feature(int64_list=tf.train.Int64List(value=values))
-
-def int64_list_feature(value):
-    return tf.train.Feature(int64_list=tf.train.Int64List(value=value))
 
 def bytes_feature(value):
     """Return a TF-feature of bytes"""
-    return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
+    if not isinstance(value, (tuple, list)):
+        values = [value]
+    else:
+        values = value
+    return tf.train.Feature(bytes_list=tf.train.BytesList(value=values))
 
-def bytes_list_feature(value):
-    return tf.train.Feature(bytes_list=tf.train.BytesList(value=value))
-
-def float_list_feature(value):
-    return tf.train.Feature(float_list=tf.train.FloatList(value=value))
+def float_feature(value):
+    if not isinstance(value, list):
+        values=[value]
+    else:
+        values = value
+    return tf.train.Feature(float_list=tf.train.FloatList(value=values))
 
 ##########################################
 
@@ -81,13 +84,9 @@ def _get_infos(dataset_dir, csv_name):
 def _convert_dataset(split_name, grouped, class_names_to_ids, dataset_dir, tfrecord_filename, _NUM_SHARDS):
     """Converts the given filenames to a TFRecord dataset.
     Args:
-
         split_name: The name of the dataset, either 'train' or 'validation'.
-    
         dataset_dir: The directory where the converted datasets are stored.
-
     """
-
     assert split_name in ['train', 'eval']
     num_per_shard = int(math.ceil(len(grouped) / float(_NUM_SHARDS)))
     path_img = os.path.join(dataset_dir, 'images')#: To use if images are located in one folder named images
@@ -113,9 +112,10 @@ def _convert_dataset(split_name, grouped, class_names_to_ids, dataset_dir, tfrec
                         #Special to ChestX Dataset: we only focus on the first anomaly(see Data_Entry_csv)
                         if '|' in row['Finding Labels']:
                             class_name = row['Finding Labels'].split('|')
+                            class_id = [class_names_to_ids[s] for s in class_name]
                         else: 
                             class_name = row['Finding Labels']
-                        class_id = [class_names_to_ids[s] for s in class_name]
+                            class_id = class_names_to_ids[class_name]
                         example = image_to_tfexample(image_data, row[0].encode(), 'png'.encode(),
                                                     height, width, class_id)
         
