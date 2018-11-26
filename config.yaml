@@ -8,13 +8,19 @@ checkpoint_dir : "D:/mobilenet"
 file_pattern : "mura_*.tfrecord"
 file_pattern_for_counting : "mura"
 #Num samples in the training dataset
+#Chest-X ray num_samples
+
 num_samples : 36807
 #Mapping from class to id
-labels_to_name : {
+names_to_labels : {
     'negative':0,
     'positive':1,
 }
 
+labels_to_names : {
+    '0' :'negative',
+    '1' :'positive',
+}
 ##########Training parameters##########
 image_size : 224
 #Nombre d'époques pour l'entraînement
@@ -32,4 +38,4 @@ weight_decay : 0.0001
 #Batch-Norm decay
 bn_decay : 0.99
 #Parameters initialization (normal, truncated_normal, xavier_initializer)
-stddev : 0.05
+stddev : 0.5

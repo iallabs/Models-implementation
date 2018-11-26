@@ -30,15 +30,12 @@ image_size = data["image_size"]
 #Nombre de classes à prédire
 file_pattern = data["file_pattern"]
 file_pattern_for_counting = data["file_pattern_for_counting"]
-#Chest-X ray num_samples
-#num_samples = 100908
-#Fruit num_samples=29184:
-#MURA num_samples = 36807
+
 num_samples = data["num_samples"]
 #Création d'un dictionnaire pour reférer à chaque label
 #MURA Labels
-labels_to_name = data["labels_to_name"]
-
+names_to_labels = data["names_to_labels"]
+labels_to_names = data["labels_to_names"]
 #==================================#
 #=======Training Informations======#
 #Nombre d'époques pour l'entraînement
@@ -84,7 +81,7 @@ def model_fn(features, mode):
     #Create the model inference
     with slim.arg_scope(mobilenet_v2.training_scope(is_training=train_mode, weight_decay=1e-4, stddev=5e-2, bn_decay=0.99)):
             #TODO: Check mobilenet_v1 module, var "excluding
-            logits, _ = mobilenet_v2.mobilenet(features['image/encoded'],depth_multiplier=1.4, num_classes = len(labels_to_name))
+            logits, _ = mobilenet_v2.mobilenet(features['image/encoded'],depth_multiplier=1.4, num_classes = len(labels_to_names))
     excluding = ['MobilenetV2/Logits']   
     variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
     if (not ckpt_state) and checkpoint_file and train_mode:
@@ -105,11 +102,15 @@ def model_fn(features, mode):
         'Accuracy': tf.metrics.accuracy(labels, predicted_classes, name="acc_op"),
         'Precision': tf.metrics.precision(labels, predicted_classes, name="precision_op"),
         'Recall': tf.metrics.recall(labels, predicted_classes, name="recall_op"),
-        'Acc_Class_0': tf.metrics.mean_per_class_accuracy(labels, predicted_classes,len(labels_to_name), name="per_class_acc_0"),
-        'Acc_Class_1': tf.metrics.mean_per_class_accuracy(labels, predicted_classes, len(labels_to_name), name="per_class_acc_1"),
+        'Acc_Class': tf.metrics.mean_per_class_accuracy(labels, predicted_classes,len(labels_to_names), name="per_class_acc")
         }
         for name, value in metrics.items():
-            tf.summary.scalar(name, value[1])
+            items_list = value[1].get_shape().as_list()
+            if len(items_list) != 0:
+                for k in range(items_list[0]):
+                    tf.summary.scalar(name+"_"+labels_to_names[str(k)], value[1][k])
+            else:
+                tf.summary.scalar(name, value[1])
     if mode == tf.estimator.ModeKeys.TRAIN:
         #Create the global step for monitoring the learning_rate and training:
         global_step = tf.train.get_or_create_global_step()
@@ -152,12 +153,12 @@ def main():
     run_config = tf.estimator.RunConfig(model_dir=train_dir, save_checkpoints_steps=num_batches_per_epoch,keep_checkpoint_max=num_epochs)
     train_spec = tf.estimator.TrainSpec(input_fn=lambda:input_fn(tf.estimator.ModeKeys.TRAIN,
                                                 dataset_dir,file_pattern,
-                                                file_pattern_for_counting, labels_to_name,
+                                                file_pattern_for_counting, names_to_labels,
                                                 batch_size, image_size),max_steps=max_step)
     eval_spec = tf.estimator.EvalSpec(input_fn=lambda:input_fn(tf.estimator.ModeKeys.EVAL,
                                                     dataset_dir, file_pattern,
-                                                    file_pattern_for_counting, labels_to_name,
-                                                    batch_size,image_size), steps=num_batches_per_epoch)
+                                                    file_pattern_for_counting, names_to_labels,
+                                                    batch_size,image_size))
     work = tf.estimator.Estimator(model_fn = model_fn,
                                     model_dir=train_dir,
                                     config=run_config)
