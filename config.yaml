@@ -1,0 +1,35 @@
+#Dataset directory
+dataset_dir : "D:/MURA-v1.1"
+#Portion of GPU to attribute for training
+gpu_p : 1.
+#Checkpoint directory (For transfer learning)
+checkpoint_dir : "D:/mobilenet"
+#File pattern to recognize
+file_pattern : "mura_*.tfrecord"
+file_pattern_for_counting : "mura"
+#Num samples in the training dataset
+num_samples : 36807
+#Mapping from class to id
+labels_to_name : {
+    'negative':0,
+    'positive':1,
+}
+
+##########Training parameters##########
+image_size : 224
+#Nombre d'époques pour l'entraînement
+num_epochs : 100
+#State your batch size
+batch_size : 8
+#Learning rate information and configuration (Up to you to experiment)
+initial_learning_rate : 0.0001
+#Decay factor
+learning_rate_decay_factor : 0.95
+num_epochs_before_decay : 1
+
+#regularization term
+weight_decay : 0.0001
+#Batch-Norm decay
+bn_decay : 0.99
+#Parameters initialization (normal, truncated_normal, xavier_initializer)
+stddev : 0.05

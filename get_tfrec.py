@@ -2,7 +2,7 @@ import random
 
 import tensorflow as tf
 
-from utils.data_utils import _get_train_valid, _convert_dataset_bis, _convert_dataset
+from utils.data_utils import _get_train_valid, _convert_dataset_bis
 
 
 
@@ -47,12 +47,12 @@ def main():
 
     #==============================================================END OF CHECKS===================================================================
 
-    #Get a list of photo_filenames like ['123.jpg', '456.jpg'...] and a list of sorted class names from parsing the subdirectories.
+    #Get a list of photos filenames like ['123.jpg', '456.jpg'...] and a list of sorted class names from parsing the subdirectories.
     photos_train, class_train, photos_valid, class_valid = _get_train_valid(FLAGS.dataset_dir)
 
     # First, convert the training and validation sets.
-    _convert_dataset_bis('train', photos_train, class_train, class_names_to_ids,
-                     dataset_dir = FLAGS.dataset_dir, tfrecord_filename = FLAGS.tfrecord_filename, batch_size=500, _NUM_SHARDS=FLAGS.num_shards)
+    """_convert_dataset_bis('train', photos_train, class_train, class_names_to_ids,
+                     dataset_dir = FLAGS.dataset_dir, tfrecord_filename = FLAGS.tfrecord_filename, batch_size=500, _NUM_SHARDS=FLAGS.num_shards)"""
     _convert_dataset_bis('eval', photos_valid, class_valid, class_names_to_ids,
                      dataset_dir = FLAGS.dataset_dir, tfrecord_filename = FLAGS.tfrecord_filename, batch_size=200, _NUM_SHARDS=FLAGS.num_shards)
 

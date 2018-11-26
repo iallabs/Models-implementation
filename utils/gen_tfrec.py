@@ -18,7 +18,6 @@ def get_dataset(phase_name, dataset_dir, file_pattern, file_pattern_for_counting
     file_pattern_for_counting = file_pattern_for_counting + '_' + phase_name
     tfrecords_to_count = [os.path.join(dataset_dir, file) for file in os.listdir(dataset_dir) if file.startswith(file_pattern_for_counting)]
     dataset = tf.data.TFRecordDataset(tfrecords_to_count)
-    num_class = len(labels_to_name)
     def parse_fn(example):
         #Create the keys_to_features dictionary for the decoder    
         feature = {
@@ -28,8 +27,34 @@ def get_dataset(phase_name, dataset_dir, file_pattern, file_pattern_for_counting
         parsed_example = tf.parse_single_example(example, feature)
         parsed_example['image/encoded'] = tf.image.decode_image(parsed_example['image/encoded'], channels=3)
         parsed_example['image/encoded'] = tf.image.convert_image_dtype(parsed_example['image/encoded'], dtype=tf.float32)
-        labels = parsed_example['image/class/id']
 
+        return parsed_example
+    dataset = dataset.map(parse_fn)
+    return dataset
+
+def get_dataset_multiclass(phase_name, dataset_dir, file_pattern, file_pattern_for_counting, labels_to_name):
+    """Creates dataset based on phased_name(train or evaluation), datatset_dir. """
+
+    #On vérifie si phase_name est 'train' ou 'validation'
+    if phase_name not in ['train', 'eval']:
+        raise ValueError('The phase_name %s is not recognized. Please input either train or eval as the phase_name' % (phase_name))
+
+    #TODO: Remove counting num_samples. num_samples have to be fixed before
+    #Compte le nombre total d'examples dans tous les fichiers
+    file_pattern_for_counting = file_pattern_for_counting + '_' + phase_name
+    tfrecords_to_count = [os.path.join(dataset_dir, file) for file in os.listdir(dataset_dir) if file.startswith(file_pattern_for_counting)]
+    dataset = tf.data.TFRecordDataset(tfrecords_to_count)
+    num_class = len(labels_to_name)
+    def parse_fn(example):
+        #Create the keys_to_features dictionary for the decoder    
+        feature = {
+            'image/encoded':tf.FixedLenFeature((), tf.string),
+            'image/class/id':tf.VarLenFeature((), tf.int64),
+        }
+        parsed_example = tf.parse_single_example(example, feature)
+        parsed_example['image/encoded'] = tf.image.decode_image(parsed_example['image/encoded'], channels = 3)
+        parsed_example['image/encoded'] = tf.image.convert_image_dtype(parsed_example['image/encoded'], dtype = tf.float32)
+        parsed_example['image/class/onehot'] = tf.one_hot(parsed_example['image/class/id'], depth=num_class, on_value = 1., off_value = 0.)
         return parsed_example
     dataset = dataset.map(parse_fn)
     return dataset

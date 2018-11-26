@@ -9,75 +9,47 @@ from utils.gen_tfrec import load_batch, get_dataset, load_batch_dense, load_batc
 
 import os
 import sys
-import time
-import datetime
-
+from yaml import load, dump
 slim = tf.contrib.slim
 
-flags = tf.app.flags
-flags.DEFINE_float('gpu_p', 1.0, 'Float: allow gpu growth value to pass in config proto')
-flags.DEFINE_string('dataset_dir','','String: Your dataset directory')
-flags.DEFINE_string('train_dir', 'train', 'String: Your train directory')
-flags.DEFINE_boolean('log_device_placement', True,
-                            """Whether to log device placement.""")
-flags.DEFINE_string('ckpt','train_fruit/net/mobilenet_v1_0.5_160.ckpt','String: Your dataset directory')
-FLAGS = flags.FLAGS
+#Open and read the yaml file:
+stream = open(os.path.join(os.getcwd(), "config.yaml"))
+data = load(stream)
 
 #=======Dataset Informations=======#
 #==================================#
-dataset_dir = FLAGS.dataset_dir
-train_dir = FLAGS.train_dir
+dataset_dir = data["dataset_dir"]
+train_dir = os.path.join(os.getcwd(), "train")
 summary_dir = os.path.join(train_dir , "summary")
-gpu_p = FLAGS.gpu_p
+gpu_p = data["gpu_p"]
 #Emplacement du checkpoint file
-checkpoint_dir= FLAGS.ckpt
+checkpoint_dir= data["checkpoint_dir"]
 checkpoint_file = os.path.join(checkpoint_dir, "mobilenet_v2_1.4_224.ckpt")
 ckpt_state = tf.train.get_checkpoint_state(train_dir)
-image_size = 224
+image_size = data["image_size"]
 #Nombre de classes à prédire
-file_pattern = "mura_%s.tfrecord"
-file_pattern_for_counting = "mura"
+file_pattern = data["file_pattern"]
+file_pattern_for_counting = data["file_pattern_for_counting"]
 #Chest-X ray num_samples
 #num_samples = 100908
 #Fruit num_samples=29184:
 #MURA num_samples = 36807
-num_samples = 36807
+num_samples = data["num_samples"]
 #Création d'un dictionnaire pour reférer à chaque label
 #MURA Labels
-labels_to_name = {
-    'negative':0,
-    'positive':1
-}
-#ChestXray labels
-"""labels_to_name = {
-                0:'No Finding', 
-                1:'Atelectasis',
-                2:'Cardiomegaly', 
-                3:'Effusion',
-                4: 'Infiltration',
-                5: 'Mass',
-                6: 'Nodule',
-                7: 'Pneumonia',
-                8: 'Pneumothorax',
-                9: 'Consolidation',
-                10: 'Edema',
-                11: 'Emphysema',
-                12: 'Fibrosis',
-                13: 'Pleural_Thickening',
-                14: 'Hernia'
-                }"""
+labels_to_name = data["labels_to_name"]
 
 #==================================#
 #=======Training Informations======#
 #Nombre d'époques pour l'entraînement
-num_epochs = 100
+num_epochs = data["num_epochs"]
 #State your batch size
-batch_size = 8
+batch_size = data["batch_size"]
 #Learning rate information and configuration (Up to you to experiment)
-initial_learning_rate = 1e-4
+initial_learning_rate = data["initial_learning_rate"]
 #Decay factor
-learning_rate_decay_factor = 0.95
-num_epochs_before_decay = 1
+learning_rate_decay_factor = data["learning_rate_decay_factor"]
+num_epochs_before_decay = data["num_epochs_before_decay"]
 #Calculus of batches/epoch, number of steps after decay learning rate
 num_batches_per_epoch = int(num_samples / batch_size)
 #num_batches = num_steps for one epcoh
@@ -110,7 +82,7 @@ def model_fn(features, mode):
     train_mode = mode==tf.estimator.ModeKeys.TRAIN
     tf.summary.image("images",features['image/encoded'])
     #Create the model inference
-    with slim.arg_scope(mobilenet_v2.training_scope(is_training=train_mode, weight_decay=0.0005, stddev=1., bn_decay=0.99)):
+    with slim.arg_scope(mobilenet_v2.training_scope(is_training=train_mode, weight_decay=1e-4, stddev=5e-2, bn_decay=0.99)):
             #TODO: Check mobilenet_v1 module, var "excluding
             logits, _ = mobilenet_v2.mobilenet(features['image/encoded'],depth_multiplier=1.4, num_classes = len(labels_to_name))
     excluding = ['MobilenetV2/Logits']   
@@ -132,11 +104,12 @@ def model_fn(features, mode):
         metrics = {
         'Accuracy': tf.metrics.accuracy(labels, predicted_classes, name="acc_op"),
         'Precision': tf.metrics.precision(labels, predicted_classes, name="precision_op"),
-        'Recall': tf.metrics.recall(labels, predicted_classes, name="recall_op")
+        'Recall': tf.metrics.recall(labels, predicted_classes, name="recall_op"),
+        'Acc_Class_0': tf.metrics.mean_per_class_accuracy(labels, predicted_classes,len(labels_to_name), name="per_class_acc_0"),
+        'Acc_Class_1': tf.metrics.mean_per_class_accuracy(labels, predicted_classes, len(labels_to_name), name="per_class_acc_1"),
         }
         for name, value in metrics.items():
             tf.summary.scalar(name, value[1])
-    
     if mode == tf.estimator.ModeKeys.TRAIN:
         #Create the global step for monitoring the learning_rate and training:
         global_step = tf.train.get_or_create_global_step()
@@ -184,7 +157,7 @@ def main():
     eval_spec = tf.estimator.EvalSpec(input_fn=lambda:input_fn(tf.estimator.ModeKeys.EVAL,
                                                     dataset_dir, file_pattern,
                                                     file_pattern_for_counting, labels_to_name,
-                                                    batch_size,image_size))
+                                                    batch_size,image_size), steps=num_batches_per_epoch)
     work = tf.estimator.Estimator(model_fn = model_fn,
                                     model_dir=train_dir,
                                     config=run_config)

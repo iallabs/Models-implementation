@@ -4,7 +4,7 @@ from tensorflow.python.platform import tf_logging as logging
 import DenseNet.nets.densenet as densenet
 import DenseNet.preprocessing.densenet_pre as dp
 from research.slim.preprocessing import inception_preprocessing
-from utils.gen_utils import load_batch, get_dataset, load_batch_dense
+from utils.gen_tfrec import load_batch, get_dataset, load_batch_dense
 
 import os
 import time
