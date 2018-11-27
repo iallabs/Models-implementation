@@ -43,7 +43,7 @@ def image_to_tfexample(image_data,filename, image_format, height, width,
         'image/format': bytes_feature(image_format),
         'image/height': int64_feature(height),
         'image/width': int64_feature(width),
-        'image/class/label': int64_feature(class_id),
+        'image/class/id': int64_feature(class_id),
     }))
 
 class ImageReader(object):

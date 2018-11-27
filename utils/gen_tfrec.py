@@ -49,12 +49,15 @@ def get_dataset_multiclass(phase_name, dataset_dir, file_pattern, file_pattern_f
         #Create the keys_to_features dictionary for the decoder    
         feature = {
             'image/encoded':tf.FixedLenFeature((), tf.string),
-            'image/class/id':tf.VarLenFeature((), tf.int64),
+            'image/class/id':tf.FixedLenFeature((),tf.string),
         }
         parsed_example = tf.parse_single_example(example, feature)
+        parsed_example['image/class/id'] = tf.decode_raw(parsed_example['image/class/id'], tf.int32)
+        print(parsed_example['image/class/id'])
         parsed_example['image/encoded'] = tf.image.decode_image(parsed_example['image/encoded'], channels = 3)
         parsed_example['image/encoded'] = tf.image.convert_image_dtype(parsed_example['image/encoded'], dtype = tf.float32)
         parsed_example['image/class/onehot'] = tf.one_hot(parsed_example['image/class/id'], depth=num_class, on_value = 1., off_value = 0.)
+        
         return parsed_example
     dataset = dataset.map(parse_fn)
     return dataset
@@ -116,11 +119,10 @@ def load_batch_estimator(dataset, batch_size, height, width, num_epochs=-1, is_t
         tf.summary.image("final_image", example['image/encoded'])
         example['image/encoded'].set_shape([None,None,3])
         example['image/encoded'] = dp.preprocess_image(example['image/encoded'], height, width, is_training)
-        
         return example
     dataset = dataset.map(process_fn)
     if is_training and shuffle:
-        dataset = dataset.shuffle(10000)
+        dataset = dataset.shuffle(5000)
         dataset = dataset.repeat()
     dataset = dataset.repeat(num_epochs)
     dataset = dataset.batch(batch_size)
