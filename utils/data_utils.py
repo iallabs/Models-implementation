@@ -99,6 +99,16 @@ def image_to_tfexample(image_data, label):
         "image/class/id": int64_feature(label)
     }))
 
+def multi_task_tfexample(image_data, label_1, label_2):
+    """
+    This is a utility function to encode a dataset in order
+    to perform a multi task training and evaluation
+    """
+    return tf.train.Example(features=tf.train.Features(feature={
+        "image/encoded": bytes_feature(image_data),
+        "image/class/id_1": int64_feature(label_1),
+        "image/class/id_2": int64_feature(label_2),
+    }))
 #TODO: Waiting for URL construction to decide how to split the URL
 # For now, we're going to write each pdf data and it's corresponding information
 #for each example

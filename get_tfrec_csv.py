@@ -77,10 +77,11 @@ def main():
     valid_filenames = pd.DataFrame.sample(validation_filenames, frac=1,random_state=3)
 
     # First, convert the training and validation sets.
-    _convert_dataset('train', training_filenames, class_names_to_ids,
-                     dataset_dir = FLAGS.dataset_dir, tfrecord_filename = FLAGS.tfrecord_filename, _NUM_SHARDS=FLAGS.num_shards)
     _convert_dataset('eval', valid_filenames, class_names_to_ids,
                      dataset_dir = FLAGS.dataset_dir, tfrecord_filename = FLAGS.tfrecord_filename, _NUM_SHARDS=1)
+    _convert_dataset('train', training_filenames, class_names_to_ids,
+                     dataset_dir = FLAGS.dataset_dir, tfrecord_filename = FLAGS.tfrecord_filename, _NUM_SHARDS=FLAGS.num_shards)
+    
 
     print('\nFinished converting the %s dataset!' % (FLAGS.tfrecord_filename))
 

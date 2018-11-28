@@ -61,12 +61,12 @@ if not os.path.exists(summary_dir):
 #Adding the graph:
 #Set the verbosity to INFO level
 tf.reset_default_graph()
-tf.logging.set_verbosity(tf.logging.DEBUG)
+tf.logging.set_verbosity(tf.logging.INFO)
 
 def input_fn(mode, dataset_dir,file_pattern, file_pattern_for_counting, labels_to_name, batch_size, image_size):
     train_mode = mode==tf.estimator.ModeKeys.TRAIN
     with tf.name_scope("dataset"):
-        dataset = get_dataset_multiclass("train" if train_mode else "eval",
+        dataset = get_dataset_multiclass("eval" if train_mode else "eval",
                                         dataset_dir, file_pattern=file_pattern,
                                         file_pattern_for_counting=file_pattern_for_counting,
                                         labels_to_name=labels_to_name)
@@ -90,17 +90,17 @@ def model_fn(features, mode):
                             {v.name.split(':')[0]: v for v in variables_to_restore})
     
         #Defining losses and regulization ops:
-    print(features['image/class/onehot'].get_shape())
     with tf.name_scope("loss_op"):
-        loss = tf.losses.sigmoid_cross_entropy(multi_class_labels = features['image/class/onehot'], logits = logits)
+        loss = tf.losses.sigmoid_cross_entropy(multi_class_labels = features['image/class/id'], logits = logits)
         total_loss = tf.losses.get_total_loss() #obtain the regularization losses as well
     #FIXME: Replace classifier function (sigmoid / softmax)
+    print(features['image/class/id'])
     if mode != tf.estimator.ModeKeys.PREDICT:
         metrics = {
-        'Accuracy': tf.metrics.accuracy(features['image/class/onehot'], logits, name="acc_op"),
-        'Precision': tf.metrics.precision(features['image/class/onehot'], logits, name="precision_op"),
-        'Recall': tf.metrics.recall(features['image/class/onehot'], logits, name="recall_op"),
-        'Acc_Class': tf.metrics.mean_per_class_accuracy(features['image/class/onehot'], logits,len(labels_to_names), name="per_class_acc")
+        'Accuracy': tf.metrics.accuracy(features['image/class/id'], logits, name="acc_op"),
+        'Precision': tf.metrics.precision(features['image/class/id'], logits, name="precision_op"),
+        'Recall': tf.metrics.recall(features['image/class/id'], logits, name="recall_op"),
+        'Acc_Class': tf.metrics.mean_per_class_accuracy(features['image/class/id'], logits,len(labels_to_names), name="per_class_acc")
         }
         for name, value in metrics.items():
             items_list = value[1].get_shape().as_list()

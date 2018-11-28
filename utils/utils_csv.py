@@ -3,7 +3,7 @@ import pandas as pd
 import os
 import sys
 import math
-from object_detection.utils import dataset_util
+import numpy as np
 #SOURCE: https://github.com/tensorflow/models/blob/master/research/slim/datasets/download_and_convert_flowers.py
 
 slim = tf.contrib.slim
@@ -12,7 +12,7 @@ def int64_feature(value):
     """ Returns a TF-feature of int64
         Args: value: scalar or list of values
         return: TF-Feature"""
-    if not isinstance(value, (tuple, list)):
+    if not isinstance(value, list):
         values = [value]
     else:
         values = value
@@ -20,7 +20,7 @@ def int64_feature(value):
 
 def bytes_feature(value):
     """Return a TF-feature of bytes"""
-    if not isinstance(value, (tuple, list)):
+    if not isinstance(value, list):
         values = [value]
     else:
         values = value
@@ -41,9 +41,7 @@ def image_to_tfexample(image_data,filename, image_format, height, width,
         'image/encoded': bytes_feature(image_data),
         'image/filename': bytes_feature(filename),
         'image/format': bytes_feature(image_format),
-        'image/height': int64_feature(height),
-        'image/width': int64_feature(width),
-        'image/class/id': int64_feature(class_id),
+        'image/class/id': float_feature(class_id),
     }))
 
 class ImageReader(object):
@@ -109,16 +107,17 @@ def _convert_dataset(split_name, grouped, class_names_to_ids, dataset_dir, tfrec
                         row = grouped.iloc[i]
                         image_data = tf.gfile.FastGFile(os.path.join(path_img, row[0]), 'rb').read()
                         height, width = image_reader.read_image_dims(sess, image_data)
+                        class_id = [0. for _ in range(len(class_names_to_ids))]
                         #Special to ChestX Dataset: we only focus on the first anomaly(see Data_Entry_csv)
                         if '|' in row['Finding Labels']:
                             class_name = row['Finding Labels'].split('|')
-                            class_id = [class_names_to_ids[s] for s in class_name]
+                            for s in class_name:
+                                class_id[class_names_to_ids[s]] = 1.
                         else: 
                             class_name = row['Finding Labels']
-                            class_id = class_names_to_ids[class_name]
+                            class_id[class_names_to_ids[class_name]] = 1.
                         example = image_to_tfexample(image_data, row[0].encode(), 'png'.encode(),
                                                     height, width, class_id)
-        
                         tfrecord_writer.write(example.SerializeToString())
                         tfrecord_writer.flush()
     sys.stdout.write('\n')

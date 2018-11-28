@@ -1,0 +1,68 @@
+#Dataset directory
+dataset_dir : "D:/chest"
+#Portion of GPU to attribute for training
+gpu_p : 1.
+#Checkpoint directory (For transfer learning)
+checkpoint_dir : "D:/mobilenet"
+#File pattern to recognize
+file_pattern : "chest_*.tfrecord"
+file_pattern_for_counting : "chest"
+#Num samples in the training dataset
+#Chest-X ray train num_samples
+
+num_samples : 95302
+#Mapping from class to id
+labels_to_names : {
+                '0':'No Finding', 
+                '1':'Atelectasis',
+                '2':'Cardiomegaly', 
+                '3':'Effusion',
+                '4': 'Infiltration',
+                '5': 'Mass',
+                '6': 'Nodule',
+                '7': 'Pneumonia',
+                '8': 'Pneumothorax',
+                '9': 'Consolidation',
+                '10': 'Edema',
+                '11': 'Emphysema',
+                '12': 'Fibrosis',
+                '13': 'Pleural_Thickening',
+                '14': 'Hernia',
+        }
+        
+names_to_labels : {
+                'No Finding': 0,
+                'Atelectasis' : 1,
+                'Cardiomegaly' : 2, 
+                'Effusion' : 3,
+                'Infiltration' : 4,
+                'Mass' : 5,
+                'Nodule' : 6,
+                'Pneumonia' : 7,
+                'Pneumothorax' : 8,
+                'Consolidation' : 9,
+                'Edema' : 10,
+                'Emphysema' : 11,
+                'Fibrosis' : 12,
+                'Pleural_Thickening' : 13,
+                'Hernia' : 14,
+            }
+
+##########Training parameters##########
+image_size : 224
+#Nombre d'époques pour l'entraînement
+num_epochs : 100
+#State your batch size
+batch_size : 8
+#Learning rate information and configuration (Up to you to experiment)
+initial_learning_rate : 0.0001
+#Decay factor
+learning_rate_decay_factor : 0.95
+num_epochs_before_decay : 1
+
+#regularization term
+weight_decay : 0.0001
+#Batch-Norm decay
+bn_decay : 0.99
+#Parameters initialization (normal, truncated_normal, xavier_initializer)
+stddev : 0.5
