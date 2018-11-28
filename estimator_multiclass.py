@@ -13,7 +13,7 @@ from yaml import load, dump
 slim = tf.contrib.slim
 
 #Open and read the yaml file:
-stream = open(os.path.join(os.getcwd(), "config_multiclass.yaml"))
+stream = open(os.path.join(os.getcwd(), "config_multilabel.yaml"))
 data = load(stream)
 
 #=======Dataset Informations=======#

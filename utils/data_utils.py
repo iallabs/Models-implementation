@@ -146,7 +146,6 @@ class ImageReader(object):
         assert len(image.shape) == 3
         assert image.shape[2] == 3
         return image  
-    
 
 def _get_filenames_and_classes(dataset_dir):
 
@@ -165,13 +164,38 @@ def _get_filenames_and_classes(dataset_dir):
 
     for root, _ , files in os.walk(dataset_dir):
         path = root.split(os.sep)
+        print(path)
         for file in files:
             photo_filenames.append(os.path.join(root,file))
             class_names.append(path[-1].split("_")[-1])
 
     return photo_filenames, class_names
 
-def _get_train_valid(dataset_dir):
+def _get_filenames_and_multiclasses(dataset_dir):
+
+    """Returns a list of filenames and inferred class names.
+    Args:
+    dataset_dir: A directory containing a set of subdirectories representing
+    class names. Each subdirectory should contain PNG or JPG encoded images.
+
+    Returns:
+    A list of image file paths, relative to `dataset_dir` and the list of
+    subdirectories, representing class names.
+    """
+    photo_filenames = []
+    class_1_names = []
+    class_2_names = []
+
+    for root, _ , files in os.walk(dataset_dir):
+        path = root.split(os.sep)
+        for file in files:
+            photo_filenames.append(os.path.join(root,file))
+            class_1_names.append(path[-1].split("_")[-1])
+            #TODO: The following is to encode the body part represented by the image
+            class_2_names.append(path[2].split("_")[-1])
+    return photo_filenames, class_1_names, class_2_names
+
+def _get_train_valid(dataset_dir, multi=False):
 
     """Returns a list of filenames and inferred class names.
     This function needs a defined train and validayion folders
@@ -184,10 +208,16 @@ def _get_train_valid(dataset_dir):
     """
     dataset_root_train = os.path.join(dataset_dir, "train")
     dataset_root_valid = os.path.join(dataset_dir, "valid")
-    photos_train, class_train = _get_filenames_and_classes(dataset_root_train)
-    photos_valid, class_valid = _get_filenames_and_classes(dataset_root_valid)
+    if multi:
+        photos_train, class_1_train, class_2_train = _get_filenames_and_multiclasses(dataset_root_train)
+        photos_valid, class_1_valid, class_2_valid = _get_filenames_and_multiclasses(dataset_root_valid)
+        return photos_train, class_1_train, class_2_train,\
+                photos_valid, class_1_valid, class_2_valid
+    else:
+        photos_train, class_train = _get_filenames_and_classes(dataset_root_train)
+        photos_valid, class_valid = _get_filenames_and_classes(dataset_root_valid)
+        return photos_train, class_train, photos_valid, class_valid
 
-    return photos_train, class_train, photos_valid, class_valid
 
 def _get_dataset_filename(dataset_dir, split_name, tfrecord_filename, stats=False):
     if stats:
@@ -204,6 +234,7 @@ def _convert_dataset_bis(split_name, filenames, class_name, class_names_to_ids,
                          dataset_dir, tfrecord_filename, batch_size,
                          _NUM_SHARDS):
     """Converts the given filenames to a TFRecord dataset.
+    (example: Ten different classes, each image has an unique class).
     Args:
 
         split_name: The name of the dataset, either 'train' or 'validation'.
@@ -256,3 +287,34 @@ def _convert_dataset_bis(split_name, filenames, class_name, class_names_to_ids,
     sys.stdout.write('\n')
     sys.stdout.flush()
 
+def _convert_dataset_multi(split_name, filenames, class_first_name, class_snd_name, class_names_to_ids,
+                         dataset_dir, tfrecord_filename, batch_size,
+                         _NUM_SHARDS):
+    """Converts the given filenames to a TFRecord dataset of multiple classes
+       We have two types of labels, and we want to join them into an unique pair of keys
+    Args:
+
+        split_name: The name of the dataset, either 'train' or 'validation'.
+        filenames: A list of absolute paths to png or jpg images.
+        class_names_to_ids: A dictionary from class names (strings) to ids
+        (integers).
+        dataset_dir: The directory where the converted datasets are stored.
+    """
+    assert split_name in ['train', 'eval']
+    max_id = int(math.ceil(len(filenames) / float(batch_size)))
+    output_filename = _get_dataset_filename(
+                            dataset_dir, split_name, tfrecord_filename = tfrecord_filename,stats=False)
+    
+    with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
+        for i in range(len(filenames)):
+            sys.stdout.write('\r>> Converting stats %d/%d' % (
+                            i, len(filenames)))
+            sys.stdout.flush()
+            # Read the filename:
+            image_data = tf.gfile.FastGFile(filenames[i], 'rb').read()
+            #TODO/This line is Special to MURA dataset for defining 13 classes.
+            class_id = class_names_to_ids[class_snd_name[i]+"_"+class_first_name[i]]
+            example_image = image_to_tfexample(image_data, class_id)
+            tfrecord_writer.write(example_image.SerializeToString())
+    sys.stdout.write('\n')
+    sys.stdout.flush()
