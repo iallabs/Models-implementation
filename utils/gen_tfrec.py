@@ -118,8 +118,10 @@ def load_batch_estimator(dataset, batch_size, height, width, num_epochs=-1, is_t
         return example
     dataset = dataset.map(process_fn)
     if is_training and shuffle:
-        dataset = dataset.shuffle(1000)
-        dataset = dataset.repeat()
-    dataset = dataset.repeat(num_epochs)
+        dataset = dataset.shuffle(2000)
+        dataset = dataset.repeat(-1)
+    else:
+        #Evaluation or test cases:
+        dataset = dataset.repeat(1)
     dataset = dataset.batch(batch_size)
     return dataset

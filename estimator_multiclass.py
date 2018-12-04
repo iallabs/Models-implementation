@@ -13,18 +13,18 @@ from yaml import load, dump
 slim = tf.contrib.slim
 
 #Open and read the yaml file:
-stream = open(os.path.join(os.getcwd(), "config_multilabel.yaml"))
+stream = open(os.path.join(os.getcwd(), "yaml","config_multilabel.yaml"))
 data = load(stream)
-
+stream.close()
 #=======Dataset Informations=======#
 #==================================#
 dataset_dir = data["dataset_dir"]
 train_dir = os.path.join(os.getcwd(), "train")
-summary_dir = os.path.join(train_dir , "summary")
 gpu_p = data["gpu_p"]
 #Emplacement du checkpoint file
 checkpoint_dir= data["checkpoint_dir"]
-checkpoint_file = os.path.join(checkpoint_dir, "mobilenet_v2_1.4_224.ckpt")
+checkpoint_pattern = data["checkpoint_pattern"]
+checkpoint_file = os.path.join(checkpoint_dir, checkpoint_pattern)
 ckpt_state = tf.train.get_checkpoint_state(train_dir)
 image_size = data["image_size"]
 #Nombre de classes à prédire
@@ -55,18 +55,17 @@ decay_steps = int(num_epochs_before_decay * num_batches_per_epoch)
 #Create log_dir:
 if not os.path.exists(train_dir):
     os.mkdir(os.path.join(os.getcwd(),train_dir))
-if not os.path.exists(summary_dir):
-    os.mkdir(os.path.join(os.getcwd(),summary_dir))
+
 #===================================================================== Training ===========================================================================#
 #Adding the graph:
 #Set the verbosity to INFO level
 tf.reset_default_graph()
-tf.logging.set_verbosity(tf.logging.INFO)
+tf.logging.set_verbosity(tf.logging.DEBUG)
 
 def input_fn(mode, dataset_dir,file_pattern, file_pattern_for_counting, labels_to_name, batch_size, image_size):
     train_mode = mode==tf.estimator.ModeKeys.TRAIN
     with tf.name_scope("dataset"):
-        dataset = get_dataset_multiclass("eval" if train_mode else "eval",
+        dataset = get_dataset_multiclass("train" if train_mode else "eval",
                                         dataset_dir, file_pattern=file_pattern,
                                         file_pattern_for_counting=file_pattern_for_counting,
                                         labels_to_name=labels_to_name)
@@ -77,7 +76,7 @@ def input_fn(mode, dataset_dir,file_pattern, file_pattern_for_counting, labels_t
 
 def model_fn(features, mode):
     train_mode = mode==tf.estimator.ModeKeys.TRAIN
-    tf.summary.image("images",features['image/encoded'])
+    tf.summary.image("images", features['image/encoded'])
     #Create the model inference
     with slim.arg_scope(mobilenet_v2.training_scope(is_training=train_mode, weight_decay=1e-4, stddev=5e-2, bn_decay=0.99)):
             #TODO: Check mobilenet_v1 module, var "excluding
@@ -98,13 +97,14 @@ def model_fn(features, mode):
     #TODO: Add a func to transform logit tensor to a label-like tensor
     # If value[][class_id]<0.5 then value[][class_id] = 0. else value[][class_id]= 1.
     #It is necessary for a multilabel classification problem
-    
+    logits_sig = tf.nn.sigmoid(logits,name="Sigmoid")
+    logits_sig = tf.to_float(tf.to_int32(logits_sig>=0.5))
     if mode != tf.estimator.ModeKeys.PREDICT:
         metrics = {
-        'Accuracy': tf.metrics.accuracy(features['image/class/id'], logits, name="acc_op"),
-        'Precision': tf.metrics.precision(features['image/class/id'], logits, name="precision_op"),
-        'Recall': tf.metrics.recall(features['image/class/id'], logits, name="recall_op"),
-        'Acc_Class': tf.metrics.mean_per_class_accuracy(features['image/class/id'], logits,len(labels_to_names), name="per_class_acc")
+            'Accuracy': tf.metrics.accuracy(features['image/class/id'], logits_sig, name="acc_op"),
+            'Precision': tf.metrics.precision(features['image/class/id'], logits_sig, name="precision_op"),
+            'Recall': tf.metrics.recall(features['image/class/id'], logits_sig, name="recall_op"),
+            'Acc_Class': tf.metrics.mean_per_class_accuracy(features['image/class/id'], logits_sig, len(labels_to_names), name="per_class_acc")
         }
         for name, value in metrics.items():
             items_list = value[1].get_shape().as_list()

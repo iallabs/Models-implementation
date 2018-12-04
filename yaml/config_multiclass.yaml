@@ -45,6 +45,8 @@ names_to_labels : {"ELBOW_negative": 0,
                     "WRIST_positive" : 13}
 
 ##########Training parameters##########
+shuffle : True
+num_shuffle : 10000
 image_size : 224
 #Nombre d'époques pour l'entraînement
 num_epochs : 100

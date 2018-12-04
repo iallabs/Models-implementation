@@ -4,6 +4,7 @@ dataset_dir : "D:/chest"
 gpu_p : 1.
 #Checkpoint directory (For transfer learning)
 checkpoint_dir : "D:/mobilenet"
+checkpoint_pattern : "mobilenet_v2_1.4_224.ckpt"
 #File pattern to recognize
 file_pattern : "chest_*.tfrecord"
 file_pattern_for_counting : "chest"
@@ -49,20 +50,22 @@ names_to_labels : {
             }
 
 ##########Training parameters##########
+shuffle : True
+num_shuffle : 5000
 image_size : 224
 #Nombre d'époques pour l'entraînement
 num_epochs : 100
 #State your batch size
-batch_size : 8
+batch_size : 16
 #Learning rate information and configuration (Up to you to experiment)
-initial_learning_rate : 0.0001
+initial_learning_rate : 0.001
 #Decay factor
 learning_rate_decay_factor : 0.95
 num_epochs_before_decay : 1
 
 #regularization term
-weight_decay : 0.0001
+weight_decay : 0.000001
 #Batch-Norm decay
 bn_decay : 0.99
 #Parameters initialization (normal, truncated_normal, xavier_initializer)
-stddev : 0.5
+stddev : 1.

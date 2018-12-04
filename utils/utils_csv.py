@@ -79,7 +79,7 @@ def _get_infos(dataset_dir, csv_name):
 
 ##########################################################
 
-def _convert_dataset(split_name, grouped, class_names_to_ids, dataset_dir, tfrecord_filename, _NUM_SHARDS):
+def _convert_dataset_multilabel(split_name, grouped, class_names_to_ids, dataset_dir, tfrecord_filename, _NUM_SHARDS):
     """Converts the given filenames to a TFRecord dataset.
     Args:
         split_name: The name of the dataset, either 'train' or 'validation'.
@@ -88,6 +88,7 @@ def _convert_dataset(split_name, grouped, class_names_to_ids, dataset_dir, tfrec
     assert split_name in ['train', 'eval']
     num_per_shard = int(math.ceil(len(grouped) / float(_NUM_SHARDS)))
     path_img = os.path.join(dataset_dir, 'images')#: To use if images are located in one folder named images
+    number_data = len(grouped)
     with tf.Graph().as_default():
         image_reader = ImageReader()
 
@@ -97,12 +98,9 @@ def _convert_dataset(split_name, grouped, class_names_to_ids, dataset_dir, tfrec
                                 dataset_dir, split_name, shard_id, tfrecord_filename = tfrecord_filename, _NUM_SHARDS = _NUM_SHARDS)
                 with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
                     start_ndx = shard_id * num_per_shard
-                    end_ndx = min((shard_id+1) * num_per_shard, len(grouped))
-
+                    end_ndx = min((shard_id+1) * num_per_shard, number_data)
                     for i in range(start_ndx, end_ndx):
-                        sys.stdout.write('\r>> Converting image %d/%d shard %d' % (i+1, len(grouped), shard_id))
-                        sys.stdout.flush()
-
+                        sys.stdout.write("\r>> Converting data %d/%d" % (i, number_data))
                         # Read the filename:
                         row = grouped.iloc[i]
                         image_data = tf.gfile.FastGFile(os.path.join(path_img, row[0]), 'rb').read()

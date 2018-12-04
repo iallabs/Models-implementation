@@ -9,11 +9,11 @@ from utils.gen_tfrec import load_batch, get_dataset, load_batch_dense, load_batc
 
 import os
 import sys
-from yaml import load, dump
+from yaml import load
 slim = tf.contrib.slim
 
 #Open and read the yaml file:
-stream = open(os.path.join(os.getcwd(), "config_multiclass.yaml"))
+stream = open(os.path.join(os.getcwd(), "yaml","config_multiclass.yaml"))
 data = load(stream)
 
 #=======Dataset Informations=======#
@@ -24,7 +24,8 @@ summary_dir = os.path.join(train_dir , "summary")
 gpu_p = data["gpu_p"]
 #Emplacement du checkpoint file
 checkpoint_dir= data["checkpoint_dir"]
-checkpoint_file = os.path.join(checkpoint_dir, "mobilenet_v2_1.4_224.ckpt")
+checkpoint_pattern  = data["checkpoint_pattern"]
+checkpoint_file = os.path.join(checkpoint_dir, checkpoint_pattern)
 ckpt_state = tf.train.get_checkpoint_state(train_dir)
 image_size = data["image_size"]
 #Nombre de classes à prédire

@@ -48,7 +48,9 @@ names_to_labels : {
                 'Hernia' : 14,
             }
 
-##########Training parameters##########
+##########Training parameters##########.
+shuffle : True
+num_shuffle : 5000
 image_size : 224
 #Nombre d'époques pour l'entraînement
 num_epochs : 100

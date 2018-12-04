@@ -1,0 +1,10 @@
+
+dataset_dir : "D:/MURA-v1.1"
+tfrecord_filename : "mura"
+validation_size : 0.1
+num_shards : 1
+random_seed : 0
+class_names_to_ids : {
+                      "negative" : 0,
+                      "positive" : 1,
+                      }
