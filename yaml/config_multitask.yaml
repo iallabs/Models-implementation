@@ -4,6 +4,7 @@ dataset_dir : "D:/chest"
 gpu_p : 1.
 #Checkpoint directory (For transfer learning)
 checkpoint_dir : "D:/mobilenet"
+checkpoint_pattern : "mobilenet_v2_1.4_224.ckpt"
 #File pattern to recognize
 file_pattern : "chest_*.tfrecord"
 file_pattern_for_counting : "chest"

@@ -47,6 +47,9 @@ initial_learning_rate = data["initial_learning_rate"]
 #Decay factor
 learning_rate_decay_factor = data["learning_rate_decay_factor"]
 num_epochs_before_decay = data["num_epochs_before_decay"]
+weight_decay = data["weight_decay"]
+bn_decay = data["bn_decay"]
+stddev = data["stddev"]
 #Calculus of batches/epoch, number of steps after decay learning rate
 num_batches_per_epoch = int(num_samples / batch_size)
 #num_batches = num_steps for one epcoh
@@ -76,9 +79,9 @@ def input_fn(mode, dataset_dir,file_pattern, file_pattern_for_counting, labels_t
 
 def model_fn(features, mode):
     train_mode = mode==tf.estimator.ModeKeys.TRAIN
-    tf.summary.image("images", features['image/encoded'])
+    tf.summary.histogram("final_image_hist", features['image/encoded'])
     #Create the model inference
-    with slim.arg_scope(mobilenet_v2.training_scope(is_training=train_mode, weight_decay=1e-4, stddev=5e-2, bn_decay=0.99)):
+    with slim.arg_scope(mobilenet_v2.training_scope(is_training=train_mode, weight_decay=weight_decay, stddev=stddev, bn_decay=bn_decay)):
             #TODO: Check mobilenet_v1 module, var "excluding
             logits, _ = mobilenet_v2.mobilenet(features['image/encoded'],depth_multiplier=1.4, num_classes = len(labels_to_names))
     excluding = ['MobilenetV2/Logits']   
@@ -113,26 +116,26 @@ def model_fn(features, mode):
                     tf.summary.scalar(name+"_"+labels_to_names[str(k)], value[1][k])
             else:
                 tf.summary.scalar(name, value[1])
-    if mode == tf.estimator.ModeKeys.TRAIN:
-        #Create the global step for monitoring the learning_rate and training:
-        global_step = tf.train.get_or_create_global_step()
-        with tf.name_scope("learning_rate"):    
-            lr = tf.train.exponential_decay(learning_rate=initial_learning_rate,
-                                    global_step=global_step,
-                                    decay_steps=decay_steps,
-                                    decay_rate = learning_rate_decay_factor,
-                                    staircase=True)
-            tf.summary.scalar('learning_rate', lr)
-        #Define Optimizer with decay learning rate:
-        with tf.name_scope("optimizer"):
-            optimizer = tf.train.AdamOptimizer(learning_rate = lr)      
-            train_op = slim.learning.create_train_op(total_loss,optimizer,
-                                                    update_ops=tf.get_collection(tf.GraphKeys.UPDATE_OPS))
+        #For Evaluation Mode
+        if mode == tf.estimator.ModeKeys.EVAL:
+            return tf.estimator.EstimatorSpec(mode, loss=total_loss, eval_metric_ops=metrics)
+        else:
+            #Create the global step for monitoring the learning_rate and training:
+            global_step = tf.train.get_or_create_global_step()
+            with tf.name_scope("learning_rate"):    
+                lr = tf.train.exponential_decay(learning_rate=initial_learning_rate,
+                                        global_step=global_step,
+                                        decay_steps=decay_steps,
+                                        decay_rate = learning_rate_decay_factor,
+                                        staircase=True)
+                tf.summary.scalar('learning_rate', lr)
+            #Define Optimizer with decay learning rate:
+            with tf.name_scope("optimizer"):
+                optimizer = tf.train.AdamOptimizer(learning_rate = lr)      
+                train_op = slim.learning.create_train_op(total_loss,optimizer,
+                                                        update_ops=tf.get_collection(tf.GraphKeys.UPDATE_OPS))
         return tf.estimator.EstimatorSpec(mode, loss=total_loss, train_op=train_op)
     
-    #For Evaluation Mode
-    if mode == tf.estimator.ModeKeys.EVAL:
-        return tf.estimator.EstimatorSpec(mode, loss=total_loss, eval_metric_ops=metrics)
 
     #For Predict/Inference Mode:
     if mode == tf.estimator.ModeKeys.PREDICT:

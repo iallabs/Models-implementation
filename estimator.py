@@ -31,10 +31,7 @@ image_size = data["image_size"]
 #Nombre de classes à prédire
 file_pattern = data["file_pattern"]
 file_pattern_for_counting = data["file_pattern_for_counting"]
-
 num_samples = data["num_samples"]
-#Création d'un dictionnaire pour reférer à chaque label
-#MURA Labels
 names_to_labels = data["names_to_labels"]
 labels_to_names = data["labels_to_names"]
 #==================================#
@@ -48,6 +45,9 @@ initial_learning_rate = data["initial_learning_rate"]
 #Decay factor
 learning_rate_decay_factor = data["learning_rate_decay_factor"]
 num_epochs_before_decay = data["num_epochs_before_decay"]
+weight_decay = data["weight_decay"]
+bn_decay = data["bn_decay"]
+stddev = data["stddev"]
 #Calculus of batches/epoch, number of steps after decay learning rate
 num_batches_per_epoch = int(num_samples / batch_size)
 #num_batches = num_steps for one epcoh
@@ -56,8 +56,7 @@ decay_steps = int(num_epochs_before_decay * num_batches_per_epoch)
 #Create log_dir:
 if not os.path.exists(train_dir):
     os.mkdir(os.path.join(os.getcwd(),train_dir))
-if not os.path.exists(summary_dir):
-    os.mkdir(os.path.join(os.getcwd(),summary_dir))
+
 #===================================================================== Training ===========================================================================#
 #Adding the graph:
 #Set the verbosity to INFO level
@@ -79,20 +78,16 @@ def input_fn(mode, dataset_dir,file_pattern, file_pattern_for_counting, labels_t
 def model_fn(features, mode):
     train_mode = mode==tf.estimator.ModeKeys.TRAIN
     tf.summary.image("images",features['image/encoded'])
+    tf.summary.histogram("final_image_hist", features['image/encoded'])
     #Create the model inference
-    with slim.arg_scope(mobilenet_v2.training_scope(is_training=train_mode, weight_decay=1e-4, stddev=5e-2, bn_decay=0.99)):
+    with slim.arg_scope(mobilenet_v2.training_scope(is_training=train_mode, weight_decay=weight_decay, stddev=stddev, bn_decay=bn_decay)):
             #TODO: Check mobilenet_v1 module, var "excluding
             logits, _ = mobilenet_v2.mobilenet(features['image/encoded'],depth_multiplier=1.4, num_classes = len(labels_to_names))
     excluding = ['MobilenetV2/Logits']   
     variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
-    if (not ckpt_state) and checkpoint_file and train_mode:
-        variables_to_restore = variables_to_restore[1:]
-        tf.train.init_from_checkpoint(checkpoint_file, 
-                            {v.name.split(':')[0]: v for v in variables_to_restore})
+    predicted_classes = tf.cast(tf.argmax(logits, axis=1), tf.int64)
+    labels = features["image/class/id"]
 
-    predicted_classes = tf.argmax(logits, axis=1)
-    labels = tf.cast(features["image/class/id"], tf.int32) 
-    
         #Defining losses and regulization ops:
     with tf.name_scope("loss_op"):
         loss = tf.losses.sparse_softmax_cross_entropy(labels = labels, logits = logits)
@@ -112,29 +107,33 @@ def model_fn(features, mode):
                     tf.summary.scalar(name+"_"+labels_to_names[str(k)], value[1][k])
             else:
                 tf.summary.scalar(name, value[1])
-    if mode == tf.estimator.ModeKeys.TRAIN:
-        #Create the global step for monitoring the learning_rate and training:
-        global_step = tf.train.get_or_create_global_step()
-        with tf.name_scope("learning_rate"):    
-            lr = tf.train.exponential_decay(learning_rate=initial_learning_rate,
-                                    global_step=global_step,
-                                    decay_steps=decay_steps,
-                                    decay_rate = learning_rate_decay_factor,
-                                    staircase=True)
-            tf.summary.scalar('learning_rate', lr)
-        #Define Optimizer with decay learning rate:
-        with tf.name_scope("optimizer"):
-            optimizer = tf.train.AdamOptimizer(learning_rate = lr)      
-            train_op = slim.learning.create_train_op(total_loss,optimizer,
-                                                    update_ops=tf.get_collection(tf.GraphKeys.UPDATE_OPS))
-        return tf.estimator.EstimatorSpec(mode, loss=total_loss, train_op=train_op)
-    
-    #For Evaluation Mode
-    if mode == tf.estimator.ModeKeys.EVAL:
-        return tf.estimator.EstimatorSpec(mode, loss=total_loss, eval_metric_ops=metrics)
+        #For Evaluation Mode
+        if mode == tf.estimator.ModeKeys.EVAL:
+            return tf.estimator.EstimatorSpec(mode, loss=total_loss, eval_metric_ops=metrics)
+        else:
+            #Load Imagenet weights for model fine-tuning
+            if (not ckpt_state) and checkpoint_file and train_mode:
+                variables_to_restore = variables_to_restore[1:]
+                tf.train.init_from_checkpoint(checkpoint_file, 
+                            {v.name.split(':')[0]: v for v in variables_to_restore})
+            #Create the global step for monitoring the learning_rate and training:
+            global_step = tf.train.get_or_create_global_step()
+            with tf.name_scope("learning_rate"):    
+                lr = tf.train.exponential_decay(learning_rate=initial_learning_rate,
+                                        global_step=global_step,
+                                        decay_steps=decay_steps,
+                                        decay_rate = learning_rate_decay_factor,
+                                        staircase=True)
+                tf.summary.scalar('learning_rate', lr)
+            #Define Optimizer with decay learning rate:
+            with tf.name_scope("optimizer"):
+                optimizer = tf.train.AdamOptimizer(learning_rate = lr)      
+                train_op = slim.learning.create_train_op(total_loss,optimizer,
+                                                        update_ops=tf.get_collection(tf.GraphKeys.UPDATE_OPS))
+            return tf.estimator.EstimatorSpec(mode, loss=total_loss, train_op=train_op)
 
     #For Predict/Inference Mode:
-    if mode == tf.estimator.ModeKeys.PREDICT:
+    else:
         predictions = {
             'classes':predicted_classes,
             'probabilities': tf.nn.softmax(logits, name="Softmax")

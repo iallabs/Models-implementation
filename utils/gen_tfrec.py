@@ -12,7 +12,6 @@ def get_dataset(phase_name, dataset_dir, file_pattern, file_pattern_for_counting
     #On vérifie si phase_name est 'train' ou 'validation'
     if phase_name not in ['train', 'eval']:
         raise ValueError('The phase_name %s is not recognized. Please input either train or eval as the phase_name' % (phase_name))
-
     #TODO: Remove counting num_samples. num_samples have to be fixed before
     #Compte le nombre total d'examples dans tous les fichiers
     file_pattern_for_counting = file_pattern_for_counting + '_' + phase_name
@@ -27,9 +26,8 @@ def get_dataset(phase_name, dataset_dir, file_pattern, file_pattern_for_counting
         parsed_example = tf.parse_single_example(example, feature)
         parsed_example['image/encoded'] = tf.image.decode_image(parsed_example['image/encoded'], channels=3)
         parsed_example['image/encoded'] = tf.image.convert_image_dtype(parsed_example['image/encoded'], dtype=tf.float32)
-
         return parsed_example
-    dataset = dataset.map(parse_fn)
+    dataset = dataset.map(parse_fn, num_parallel_calls=8)
     return dataset
 
 def get_dataset_multiclass(phase_name, dataset_dir, file_pattern, file_pattern_for_counting, labels_to_name):
@@ -77,7 +75,6 @@ def load_batch(dataset, batch_size, height, width, num_epochs=-1, is_training=Tr
     dataset = dataset.repeat(num_epochs)
     dataset = dataset.batch(batch_size)
     parsed_batch = dataset.make_one_shot_iterator().get_next()
-    tf.summary.image("final_image", parsed_batch['image/encoded'])
 
     return parsed_batch['image/encoded'], parsed_batch['image/class/one_hot']
 
@@ -88,7 +85,6 @@ def load_batch_dense(dataset, batch_size, height, width, num_epochs=-1, is_train
     - labels(Tensor): the batch's labels with the shape (batch_size,) (requires one_hot_encoding).
     """
     def process_fn(example):
-        tf.summary.image("final_image", example['image/encoded'])
         example['image/encoded'].set_shape([None,None,3])
         example['image/encoded'] = dp.preprocess_image(example['image/encoded'], height, width, is_training)
         
@@ -102,7 +98,6 @@ def load_batch_dense(dataset, batch_size, height, width, num_epochs=-1, is_train
         dataset = dataset.repeat(1)
     dataset = dataset.batch(batch_size)
     parsed_batch = dataset.make_one_shot_iterator().get_next()
-    tf.summary.image("final_image", parsed_batch['image/encoded'])
     return parsed_batch['image/encoded'], parsed_batch['image/class/one_hot']
 
 def load_batch_estimator(dataset, batch_size, height, width, num_epochs=-1, is_training=True, shuffle=True):
@@ -112,16 +107,16 @@ def load_batch_estimator(dataset, batch_size, height, width, num_epochs=-1, is_t
     - labels(Tensor): the batch's labels with the shape (batch_size,) (requires one_hot_encoding).
     """
     def process_fn(example):
-        tf.summary.image("final_image", example['image/encoded'])
         example['image/encoded'].set_shape([None,None,3])
         example['image/encoded'] = dp.preprocess_image(example['image/encoded'], height, width, is_training)
         return example
-    dataset = dataset.map(process_fn)
+    dataset = dataset.map(process_fn, num_parallel_calls=8)
     if is_training and shuffle:
-        dataset = dataset.shuffle(2000)
+        dataset = dataset.shuffle(1000)
         dataset = dataset.repeat(-1)
-    else:
-        #Evaluation or test cases:
-        dataset = dataset.repeat(1)
+    #Batch up the dataset
     dataset = dataset.batch(batch_size)
+    #The following line avoid the bottleneck btw CPU and GPU
+    #prefecth always prepare a amount of data on CPU for the GPU
+    dataset = dataset.prefetch(batch_size)
     return dataset

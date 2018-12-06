@@ -1,9 +1,10 @@
 #Dataset directory
-dataset_dir : "D:/MURA-v1.1"
+dataset_dir : "D:/MURA-v1.1/multiclass"
 #Portion of GPU to attribute for training
 gpu_p : 1.
 #Checkpoint directory (For transfer learning)
 checkpoint_dir : "D:/mobilenet"
+checkpoint_pattern : "mobilenet_v2_1.4_224.ckpt"
 #File pattern to recognize
 file_pattern : "mura13_*.tfrecord"
 file_pattern_for_counting : "mura13"
@@ -59,7 +60,7 @@ learning_rate_decay_factor : 0.95
 num_epochs_before_decay : 1
 
 #regularization term
-weight_decay : 0.0001
+weight_decay : 0.000000001
 #Batch-Norm decay
 bn_decay : 0.99
 #Parameters initialization (normal, truncated_normal, xavier_initializer)
