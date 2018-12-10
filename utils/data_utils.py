@@ -301,7 +301,6 @@ def _convert_dataset_multi(split_name, filenames, class_first_name, class_snd_na
     max_id = int(math.ceil(len(filenames) / float(batch_size)))
     output_filename = _get_dataset_filename(
                             dataset_dir, split_name, tfrecord_filename = tfrecord_filename,stats=False)
-    
     with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
         for i in range(len(filenames)):
             sys.stdout.write('\r>> Converting stats %d/%d' % (

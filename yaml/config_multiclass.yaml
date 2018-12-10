@@ -6,8 +6,8 @@ gpu_p : 1.
 checkpoint_dir : "D:/mobilenet"
 checkpoint_pattern : "mobilenet_v2_1.4_224.ckpt"
 #File pattern to recognize
-file_pattern : "mura13_*.tfrecord"
-file_pattern_for_counting : "mura13"
+file_pattern : "mura14_*.tfrecord"
+file_pattern_for_counting : "mura14"
 #Num samples in the training dataset
 #Chest-X ray train num_samples
 

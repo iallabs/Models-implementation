@@ -88,12 +88,12 @@ def model_fn(features, mode):
     predicted_classes = tf.cast(tf.argmax(logits, axis=1), tf.int64)
     labels = features["image/class/id"]
 
-        #Defining losses and regulization ops:
-    with tf.name_scope("loss_op"):
-        loss = tf.losses.sparse_softmax_cross_entropy(labels = labels, logits = logits)
-        total_loss = tf.losses.get_total_loss() #obtain the regularization losses as well
-    #FIXME: Replace classifier function (sigmoid / softmax)
     if mode != tf.estimator.ModeKeys.PREDICT:
+         #Defining losses and regulization ops:
+        with tf.name_scope("loss_op"):
+            loss = tf.losses.sparse_softmax_cross_entropy(labels = labels, logits = logits)
+            total_loss = tf.losses.get_total_loss() #obtain the regularization losses as well
+        #FIXME: Replace classifier function (sigmoid / softmax)
         metrics = {
         'Accuracy': tf.metrics.accuracy(labels, predicted_classes, name="acc_op"),
         'Precision': tf.metrics.precision(labels, predicted_classes, name="precision_op"),
@@ -103,6 +103,7 @@ def model_fn(features, mode):
         for name, value in metrics.items():
             items_list = value[1].get_shape().as_list()
             if len(items_list) != 0:
+                print(items_list)
                 for k in range(items_list[0]):
                     tf.summary.scalar(name+"_"+labels_to_names[str(k)], value[1][k])
             else:

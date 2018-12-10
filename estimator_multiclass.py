@@ -90,19 +90,19 @@ def model_fn(features, mode):
         variables_to_restore = variables_to_restore[1:]
         tf.train.init_from_checkpoint(checkpoint_file, 
                             {v.name.split(':')[0]: v for v in variables_to_restore})
-    
-    #Defining losses and regulization ops:
-    with tf.name_scope("loss_op"):
-        loss = tf.losses.sigmoid_cross_entropy(multi_class_labels = features['image/class/id'], logits = logits)
-        total_loss = tf.losses.get_total_loss() #obtain the regularization losses as well
-    #FIXME: Replace classifier function (sigmoid / softmax)
    
-    #TODO: Add a func to transform logit tensor to a label-like tensor
-    # If value[][class_id]<0.5 then value[][class_id] = 0. else value[][class_id]= 1.
-    #It is necessary for a multilabel classification problem
-    logits_sig = tf.nn.sigmoid(logits,name="Sigmoid")
-    logits_sig = tf.to_float(tf.to_int32(logits_sig>=0.5))
+    
     if mode != tf.estimator.ModeKeys.PREDICT:
+         #Defining losses and regulization ops:
+        with tf.name_scope("loss_op"):
+            loss = tf.losses.sigmoid_cross_entropy(multi_class_labels = features['image/class/id'], logits = logits)
+            total_loss = tf.losses.get_total_loss() #obtain the regularization losses as well
+        #TODO: Add a func to transform logit tensor to a label-like tensor
+        # If value[][class_id]<0.5 then value[][class_id] = 0. else value[][class_id]= 1.
+        #It is necessary for a multilabel classification problem
+        logits_sig = tf.nn.sigmoid(logits,name="Sigmoid")
+        logits_sig = tf.to_float(tf.to_int32(logits_sig>=0.5))
+      
         metrics = {
             'Accuracy': tf.metrics.accuracy(features['image/class/id'], logits_sig, name="acc_op"),
             'Precision': tf.metrics.precision(features['image/class/id'], logits_sig, name="precision_op"),
