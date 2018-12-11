@@ -1,6 +1,6 @@
 import tensorflow as tf
 import os
-from research.slim.preprocessing import inception_preprocessing
+import research.slim.preprocessing.preprocessing_factory as preprocessing_factory
 import DenseNet.preprocessing.densenet_pre as dp
 slim = tf.contrib.slim
 
@@ -100,7 +100,7 @@ def load_batch_dense(dataset, batch_size, height, width, num_epochs=-1, is_train
     parsed_batch = dataset.make_one_shot_iterator().get_next()
     return parsed_batch['image/encoded'], parsed_batch['image/class/one_hot']
 
-def load_batch_estimator(dataset, batch_size, height, width, num_epochs=-1, is_training=True, shuffle=True):
+def load_batch_estimator(dataset, model_name, batch_size, height, width, num_epochs=-1, is_training=True, shuffle=True):
     """ Function for loading a train batch 
     OUTPUTS:
     - images(Tensor): a Tensor of the shape (batch_size, height, width, channels) that contain one batch of images
@@ -108,8 +108,11 @@ def load_batch_estimator(dataset, batch_size, height, width, num_epochs=-1, is_t
     """
     def process_fn(example):
         example['image/encoded'].set_shape([None,None,3])
-        example['image/encoded'] = dp.preprocess_image(example['image/encoded'], height, width, is_training)
+        #Use model_name and slim to get the preprocessing fucntion :
+        preprocess_func = preprocessing_factory.get_preprocessing(model_name, is_training=is_training)
+        example['image/encoded'] = preprocess_func(example['image/encoded'], height, width)
         return example
+    
     dataset = dataset.map(process_fn, num_parallel_calls=8)
     if is_training and shuffle:
         dataset = dataset.shuffle(1000)

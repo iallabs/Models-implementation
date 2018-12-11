@@ -2,9 +2,7 @@ import tensorflow as tf
 
 
 from tensorflow.python.platform import tf_logging as logging
-import DenseNet.nets.densenet as densenet
-import research.slim.nets.mobilenet.mobilenet_v2 as mobilenet_v2
-import research.slim.nets.inception_resnet_v2 as inception
+import research.slim.nets.nets_factory as nets_factory
 from utils.gen_tfrec import load_batch, get_dataset_multiclass, load_batch_dense, load_batch_estimator
 
 import os
@@ -19,6 +17,7 @@ stream.close()
 #=======Dataset Informations=======#
 #==================================#
 dataset_dir = data["dataset_dir"]
+model_name = data["model_name"]
 train_dir = os.path.join(os.getcwd(), "train")
 gpu_p = data["gpu_p"]
 #Emplacement du checkpoint file
@@ -30,7 +29,6 @@ image_size = data["image_size"]
 #Nombre de classes à prédire
 file_pattern = data["file_pattern"]
 file_pattern_for_counting = data["file_pattern_for_counting"]
-
 num_samples = data["num_samples"]
 #Création d'un dictionnaire pour reférer à chaque label
 #MURA Labels
@@ -73,17 +71,19 @@ def input_fn(mode, dataset_dir,file_pattern, file_pattern_for_counting, labels_t
                                         file_pattern_for_counting=file_pattern_for_counting,
                                         labels_to_name=labels_to_name)
     with tf.name_scope("load_data"):
-        dataset = load_batch_estimator(dataset, batch_size, image_size, image_size,
+        dataset = load_batch_estimator(dataset, model_name, batch_size, image_size, image_size,
                                                         shuffle=train_mode, is_training=train_mode)
     return dataset 
 
 def model_fn(features, mode):
     train_mode = mode==tf.estimator.ModeKeys.TRAIN
     tf.summary.histogram("final_image_hist", features['image/encoded'])
-    #Create the model inference
-    with slim.arg_scope(mobilenet_v2.training_scope(is_training=train_mode, weight_decay=weight_decay, stddev=stddev, bn_decay=bn_decay)):
-            #TODO: Check mobilenet_v1 module, var "excluding
-            logits, _ = mobilenet_v2.mobilenet(features['image/encoded'],depth_multiplier=1.4, num_classes = len(labels_to_names))
+    #Create the model structure using network_fn :
+    network = nets_factory.networks_map[model_name]
+    network_argscope = nets_factory.arg_scopes_map[model_name]
+    with slim.arg_scope(network_argscope(is_training=train_mode, weight_decay=weight_decay, stddev=stddev, bn_decay=bn_decay)):
+        #TODO: Check mobilenet_v1 module, var "excluding
+        logits, _ = network (features['image/encoded'], num_classes = len(labels_to_names))
     excluding = ['MobilenetV2/Logits']   
     variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
     if (not ckpt_state) and checkpoint_file and train_mode:

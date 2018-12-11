@@ -2,6 +2,8 @@
 dataset_dir : "D:/chest"
 #Portion of GPU to attribute for training
 gpu_p : 1.
+#Model name to call automatically:
+model_name : "mobilenet_v2_140"
 #Checkpoint directory (For transfer learning)
 checkpoint_dir : "D:/mobilenet"
 checkpoint_pattern : "mobilenet_v2_1.4_224.ckpt"

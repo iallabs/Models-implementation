@@ -2,9 +2,7 @@ import tensorflow as tf
 
 
 from tensorflow.python.platform import tf_logging as logging
-import DenseNet.nets.densenet as densenet
-import research.slim.nets.mobilenet.mobilenet_v2 as mobilenet_v2
-import research.slim.nets.inception_resnet_v2 as inception
+import research.slim.nets.nets_factory as nets_factory
 from utils.gen_tfrec import load_batch, get_dataset, load_batch_dense, load_batch_estimator
 
 import os
@@ -19,15 +17,16 @@ data = load(stream)
 #=======Dataset Informations=======#
 #==================================#
 dataset_dir = data["dataset_dir"]
-train_dir = os.path.join(os.getcwd(), "train")
-summary_dir = os.path.join(train_dir , "summary")
 gpu_p = data["gpu_p"]
 #Emplacement du checkpoint file
+model_name = data["model_name"]
 checkpoint_dir= data["checkpoint_dir"]
 checkpoint_pattern  = data["checkpoint_pattern"]
 checkpoint_file = os.path.join(checkpoint_dir, checkpoint_pattern)
+train_dir = os.path.join(os.getcwd(), "train_"+model_name)
 ckpt_state = tf.train.get_checkpoint_state(train_dir)
 image_size = data["image_size"]
+#Define the training directory:
 #Nombre de classes à prédire
 file_pattern = data["file_pattern"]
 file_pattern_for_counting = data["file_pattern_for_counting"]
@@ -63,7 +62,7 @@ if not os.path.exists(train_dir):
 tf.reset_default_graph()
 tf.logging.set_verbosity(tf.logging.DEBUG)
 
-def input_fn(mode, dataset_dir,file_pattern, file_pattern_for_counting, labels_to_name, batch_size, image_size):
+def input_fn(mode, dataset_dir, model_name, file_pattern, file_pattern_for_counting, labels_to_name, batch_size, image_size):
     train_mode = mode==tf.estimator.ModeKeys.TRAIN
     with tf.name_scope("dataset"):
         dataset = get_dataset("train" if train_mode else "eval",
@@ -71,7 +70,7 @@ def input_fn(mode, dataset_dir,file_pattern, file_pattern_for_counting, labels_t
                                         file_pattern_for_counting=file_pattern_for_counting,
                                         labels_to_name=labels_to_name)
     with tf.name_scope("load_data"):
-        dataset = load_batch_estimator(dataset, batch_size, image_size, image_size,
+        dataset = load_batch_estimator(dataset, model_name, batch_size, image_size, image_size,
                                                         shuffle=train_mode, is_training=train_mode)
     return dataset 
 
@@ -79,12 +78,13 @@ def model_fn(features, mode):
     train_mode = mode==tf.estimator.ModeKeys.TRAIN
     tf.summary.image("images",features['image/encoded'])
     tf.summary.histogram("final_image_hist", features['image/encoded'])
-    #Create the model inference
-    with slim.arg_scope(mobilenet_v2.training_scope(is_training=train_mode, weight_decay=weight_decay, stddev=stddev, bn_decay=bn_decay)):
-            #TODO: Check mobilenet_v1 module, var "excluding
-            logits, _ = mobilenet_v2.mobilenet(features['image/encoded'],depth_multiplier=1.4, num_classes = len(labels_to_names))
-    excluding = ['MobilenetV2/Logits']   
-    variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
+    #Create the model structure using network_fn :
+    network = nets_factory.networks_map[model_name]
+    network_argscope = nets_factory.arg_scopes_map[model_name]
+    with slim.arg_scope(network_argscope(is_training=train_mode, weight_decay=weight_decay, stddev=stddev, bn_decay=bn_decay)):
+        #TODO: Check mobilenet_v1 module, var "excluding
+        logits, _ = network (features['image/encoded'], num_classes = len(labels_to_names))
+    #Find the max of the predicted class and change its data type
     predicted_classes = tf.cast(tf.argmax(logits, axis=1), tf.int64)
     labels = features["image/class/id"]
 
@@ -103,7 +103,6 @@ def model_fn(features, mode):
         for name, value in metrics.items():
             items_list = value[1].get_shape().as_list()
             if len(items_list) != 0:
-                print(items_list)
                 for k in range(items_list[0]):
                     tf.summary.scalar(name+"_"+labels_to_names[str(k)], value[1][k])
             else:
@@ -112,6 +111,9 @@ def model_fn(features, mode):
         if mode == tf.estimator.ModeKeys.EVAL:
             return tf.estimator.EstimatorSpec(mode, loss=total_loss, eval_metric_ops=metrics)
         else:
+            #TODO: Find/construct a way to automatically define variables to exclude from the restore op
+            excluding = ['MobilenetV2/Logits']   
+            variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
             #Load Imagenet weights for model fine-tuning
             if (not ckpt_state) and checkpoint_file and train_mode:
                 variables_to_restore = variables_to_restore[1:]
@@ -153,11 +155,11 @@ def main():
     #Define configuration non-distributed work:
     run_config = tf.estimator.RunConfig(model_dir=train_dir, save_checkpoints_steps=num_batches_per_epoch,keep_checkpoint_max=num_epochs)
     train_spec = tf.estimator.TrainSpec(input_fn=lambda:input_fn(tf.estimator.ModeKeys.TRAIN,
-                                                dataset_dir,file_pattern,
+                                                dataset_dir, model_name, file_pattern,
                                                 file_pattern_for_counting, names_to_labels,
-                                                batch_size, image_size),max_steps=max_step)
+                                                batch_size, image_size), max_steps=max_step)
     eval_spec = tf.estimator.EvalSpec(input_fn=lambda:input_fn(tf.estimator.ModeKeys.EVAL,
-                                                    dataset_dir, file_pattern,
+                                                    dataset_dir, model_name, file_pattern,
                                                     file_pattern_for_counting, names_to_labels,
                                                     batch_size,image_size))
     work = tf.estimator.Estimator(model_fn = model_fn,
