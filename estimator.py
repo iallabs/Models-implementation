@@ -11,7 +11,7 @@ from yaml import load
 slim = tf.contrib.slim
 
 #Open and read the yaml file:
-stream = open(os.path.join(os.getcwd(), "yaml","config_multiclass.yaml"))
+stream = open(os.path.join(os.getcwd(), "yaml","config","config_multiclass.yaml"))
 data = load(stream)
 
 #=======Dataset Informations=======#
@@ -81,9 +81,9 @@ def model_fn(features, mode):
     #Create the model structure using network_fn :
     network = nets_factory.networks_map[model_name]
     network_argscope = nets_factory.arg_scopes_map[model_name]
-    with slim.arg_scope(network_argscope(is_training=train_mode, weight_decay=weight_decay, stddev=stddev, bn_decay=bn_decay)):
+    with slim.arg_scope(network_argscope(weight_decay=weight_decay)):
         #TODO: Check mobilenet_v1 module, var "excluding
-        logits, _ = network (features['image/encoded'], num_classes = len(labels_to_names))
+        logits, _ = network (features['image/encoded'], num_classes = len(labels_to_names), is_training=train_mode)
     #Find the max of the predicted class and change its data type
     predicted_classes = tf.cast(tf.argmax(logits, axis=1), tf.int64)
     labels = features["image/class/id"]
@@ -112,9 +112,10 @@ def model_fn(features, mode):
             return tf.estimator.EstimatorSpec(mode, loss=total_loss, eval_metric_ops=metrics)
         else:
             #TODO: Find/construct a way to automatically define variables to exclude from the restore op
-            excluding = ['MobilenetV2/Logits']   
-            variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
             #Load Imagenet weights for model fine-tuning
+            excluding = []   
+            variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
+            print(variables_to_restore)
             if (not ckpt_state) and checkpoint_file and train_mode:
                 variables_to_restore = variables_to_restore[1:]
                 tf.train.init_from_checkpoint(checkpoint_file, 

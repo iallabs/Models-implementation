@@ -4,7 +4,7 @@ dataset_dir : "D:/MURA-v1.1/multiclass"
 gpu_p : 1.
 
 #Model name to call automatically:
-model_name : "mobilenet_v2_140"
+model_name : "mobilenet_v2"
 #Checkpoint directory (For transfer learning)
 checkpoint_dir : "D:/mobilenet"
 checkpoint_pattern : "mobilenet_v2_1.4_224.ckpt"

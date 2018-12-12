@@ -1,26 +1,25 @@
 import tensorflow as tf
 
-
 from tensorflow.python.platform import tf_logging as logging
 import research.slim.nets.nets_factory as nets_factory
-from utils.gen_tfrec import load_batch, get_dataset_multiclass, load_batch_dense, load_batch_estimator
+from utils.gen_tfrec import get_dataset_multiclass, load_batch_estimator
 
 import os
 import sys
 from yaml import load, dump
-slim = tf.contrib.slim
 
+slim = tf.contrib.slim
 #Open and read the yaml file:
-stream = open(os.path.join(os.getcwd(), "yaml","config_multilabel.yaml"))
+stream = open(os.path.join(os.getcwd(), "yaml","config","config_multilabel.yaml"))
 data = load(stream)
 stream.close()
 #=======Dataset Informations=======#
 #==================================#
 dataset_dir = data["dataset_dir"]
 model_name = data["model_name"]
-train_dir = os.path.join(os.getcwd(), "train")
 gpu_p = data["gpu_p"]
 #Emplacement du checkpoint file
+train_dir = os.path.join(os.getcwd(), "train_"+model_name)
 checkpoint_dir= data["checkpoint_dir"]
 checkpoint_pattern = data["checkpoint_pattern"]
 checkpoint_file = os.path.join(checkpoint_dir, checkpoint_pattern)
