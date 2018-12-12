@@ -66,11 +66,11 @@ network_file.close()
 variables_to_exclude = network_config.pop("variables_to_exclude")
 argscope_config = network_config.pop("argscope")
 if "prediction_fn" in network_config.keys():
-    network_config["prediction_fn"] = getattr(tf.contrib.layers,network_config["prediction_fn"])
+    network_config["prediction_fn"] = getattr(tf.contrib.layers, network_config["prediction_fn"])
 if "activation_fn" in network_config.keys():
-    network_config["activation_fn"] = getattr(tf.nn,network_config["activation_fn"])
+    network_config["activation_fn"] = getattr(tf.nn, network_config["activation_fn"])
 if "activation_fn" in argscope_config.keys():
-    network_config["activation_fn"] = getattr(tf.nn,argscope_config["activation_fn"])
+    argscope_config["activation_fn"] = getattr(tf.nn, argscope_config["activation_fn"])
 #==================================#
 #==================================#
 
