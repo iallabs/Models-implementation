@@ -4,11 +4,11 @@ dataset_dir : "D:/MURA-v1.1/multiclass"
 gpu_p : 1.
 
 #Model name to call automatically:
-model_name : "mobilenet_v2"
+model_name : "inception_v1"
 variables_to_exclude : []
 #Checkpoint directory (For transfer learning)
-checkpoint_dir : "D:/mobilenet"
-checkpoint_pattern : "mobilenet_v2_1.4_224.ckpt"
+checkpoint_dir : "D:/inception_v1"
+checkpoint_pattern : "inception_v1.ckpt"
 #File pattern to recognize
 file_pattern : "mura14_*.tfrecord"
 file_pattern_for_counting : "mura14"
@@ -62,10 +62,3 @@ initial_learning_rate : 0.0001
 #Decay factor
 learning_rate_decay_factor : 0.95
 num_epochs_before_decay : 1
-
-#regularization term
-weight_decay : 0.000000001
-#Batch-Norm decay
-bn_decay : 0.99
-#Parameters initialization (normal, truncated_normal, xavier_initializer)
-stddev : 0.5

@@ -1,4 +1,0 @@
-dropout_keep_prob : 0.5
-spatial_squeeze : True
-scope : 'alexnet_v2'
-global_pool : False

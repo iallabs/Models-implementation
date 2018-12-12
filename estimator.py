@@ -25,6 +25,7 @@ checkpoint_dir= data["checkpoint_dir"]
 checkpoint_pattern  = data["checkpoint_pattern"]
 checkpoint_file = os.path.join(checkpoint_dir, checkpoint_pattern)
 train_dir = os.path.join(os.getcwd(), "train_"+model_name)
+#Define the checkpoint state to determine initialization: from pre-trained weigths or recovery
 ckpt_state = tf.train.get_checkpoint_state(train_dir)
 image_size = data["image_size"]
 #Define the training directory:
@@ -49,9 +50,6 @@ initial_learning_rate = data["initial_learning_rate"]
 #Decay factor
 learning_rate_decay_factor = data["learning_rate_decay_factor"]
 num_epochs_before_decay = data["num_epochs_before_decay"]
-weight_decay = data["weight_decay"]
-bn_decay = data["bn_decay"]
-stddev = data["stddev"]
 #Calculus of batches/epoch, number of steps after decay learning rate
 num_batches_per_epoch = int(num_samples / batch_size)
 #num_batches = num_steps for one epcoh
@@ -62,16 +60,21 @@ decay_steps = int(num_epochs_before_decay * num_batches_per_epoch)
 #==================================#
 #=======Network Informations=======#
 #==================================#
-network_file = open(os.path.join(os.getcwd(), "yaml", "cnn", "networks", model_name+".yaml"))
+network_file = open(os.path.join(os.getcwd(), "yaml", "cnn", model_name+".yaml"))
 network_config = load(network_file)
 network_file.close()
-argscope_file = open(os.path.join(os.getcwd(), "yaml", "cnn", "argscope", model_name+".yaml"))
-argscope_config = load(argscope_file)
-network_file.close()
+variables_to_exclude = network_config.pop("variables_to_exclude")
+argscope_config = network_config.pop("argscope")
+if "prediction_fn" in network_config.keys():
+    network_config["prediction_fn"] = getattr(tf.contrib.layers,network_config["prediction_fn"])
+if "activation_fn" in network_config.keys():
+    network_config["activation_fn"] = getattr(tf.nn,network_config["activation_fn"])
+if "activation_fn" in argscope_config.keys():
+    network_config["activation_fn"] = getattr(tf.nn,argscope_config["activation_fn"])
 #==================================#
 #==================================#
 
-#Create log_dir:
+#Create log_dir:argscope_config
 if not os.path.exists(train_dir):
     os.mkdir(os.path.join(os.getcwd(),train_dir))
 #===================================================================== Training ===========================================================================#
@@ -100,14 +103,12 @@ def model_fn(features, mode):
     network = nets_factory.networks_map[model_name]
     network_argscope = nets_factory.arg_scopes_map[model_name]
     with slim.arg_scope(network_argscope(**argscope_config)):
-        #TODO: Check mobilenet_v1 module, var "excluding
         logits, _ = network(features['image/encoded'], num_classes = len(labels_to_names), is_training=train_mode, **network_config)
     #Find the max of the predicted class and change its data type
     predicted_classes = tf.cast(tf.argmax(logits, axis=1), tf.int64)
     labels = features["image/class/id"]
-
     if mode != tf.estimator.ModeKeys.PREDICT:
-         #Defining losses and regulization ops:
+        #Defining losses and regulization ops:
         with tf.name_scope("loss_op"):
             loss = tf.losses.sparse_softmax_cross_entropy(labels = labels, logits = logits)
             total_loss = tf.losses.get_total_loss() #obtain the regularization losses as well
@@ -131,7 +132,7 @@ def model_fn(features, mode):
         else:
             #TODO: Find/construct a way to automatically define variables to exclude from the restore op
             #Load Imagenet weights for model fine-tuning
-            excluding = []   
+            excluding = variables_to_exclude  
             variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
             if (not ckpt_state) and checkpoint_file and train_mode:
                 variables_to_restore = variables_to_restore[1:]
@@ -166,8 +167,6 @@ def model_fn(features, mode):
         return tf.estimator.EstimatorSpec(mode,predictions=predictions,
                                             export_outputs=export_outputs)
 def main():
-    #Define the checkpoint state to determine initialization: from pre-trained weigths or recovery
-           
     #Define max steps:
     max_step = num_epochs*num_batches_per_epoch
     #Define configuration non-distributed work:

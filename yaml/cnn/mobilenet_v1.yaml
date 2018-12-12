@@ -1,0 +1,15 @@
+dropout_keep_prob : 0.999
+min_depth : 8
+depth_multiplier : 1.0
+conv_defs : null
+prediction_fn : softmax
+spatial_squeeze : True
+scope : 'MobilenetV1'
+global_pool : False
+variables_to_exclude : ["MobilenetV1/Logits"]
+argscope:
+  weight_decay : 0.00004
+  stddev : 0.09
+  regularize_depthwise : False
+  batch_norm_decay : 0.9997
+  batch_norm_epsilon : 0.001

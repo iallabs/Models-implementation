@@ -1,0 +1,8 @@
+final_endpoint : null
+config : null
+current_step : null
+variables_to_exclude : ["Nasnet/Logits"]
+argscope:
+  weight_decay : 0.00004
+  batch_norm_decay : 0.9997
+  batch_norm_epsilon : 0.001

@@ -1,0 +1,13 @@
+global_pool : True
+output_stride : null
+spatial_squeeze : True
+store_non_strided_activations : False
+reuse : null
+variables_to_exclude : ["ResnetV1/Logits"]
+argscope : 
+  weight_decay : 0.0001
+  batch_norm_decay : 0.997
+  batch_norm_epsilon : 0.00001
+  batch_norm_scale : True
+  activation_fn : relu
+  use_batch_norm : True

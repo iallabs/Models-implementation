@@ -1,4 +1,0 @@
-dropout_keep_prob  : 0.8
-reuse  : None
-scope  : 'InceptionV4'
-create_aux_logits  : True

@@ -1,0 +1,7 @@
+final_endpoint : null
+config : null
+variables_to_exclude : ["pnasnet/Logits"]
+argscope:
+  weight_decay : 0.00004
+  batch_norm_decay : 0.9997
+  batch_norm_epsilon : 0.001

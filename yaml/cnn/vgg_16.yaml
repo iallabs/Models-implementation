@@ -1,0 +1,8 @@
+dropout_keep_prob : 0.5
+spatial_squeeze : True
+scope : 'vgg_16'
+fc_conv_padding : 'VALID'
+global_pool : False
+variables_to_exclude : ["vgg_16/fc8"]
+argscope :
+  weight_decay : 0.0005

@@ -1,8 +1,0 @@
-dropout_keep_prob : 0.8
-min_depth : 16
-depth_multiplier : 1.0
-prediction_fn : tf.nn.softmax
-spatial_squeeze : True
-reuse : None
-scope : 'InceptionV2'
-global_pool : False
