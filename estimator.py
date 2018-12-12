@@ -13,7 +13,7 @@ slim = tf.contrib.slim
 #Open and read the yaml file:
 stream = open(os.path.join(os.getcwd(), "yaml","config","config_multiclass.yaml"))
 data = load(stream)
-
+stream.close()
 #=======Dataset Informations=======#
 #==================================#
 dataset_dir = data["dataset_dir"]
