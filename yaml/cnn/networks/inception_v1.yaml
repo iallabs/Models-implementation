@@ -1,0 +1,6 @@
+dropout_keep_prob : 0.8
+prediction_fn : tf.nn.softmax
+spatial_squeeze : True
+reuse : None
+scope : 'InceptionV1'
+global_pool : False

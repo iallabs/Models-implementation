@@ -1,0 +1,9 @@
+dropout_keep_prob : 0.999
+min_depth : 8
+depth_multiplier : 1.0
+conv_defs : None
+prediction_fn : tf.nn.softmax
+spatial_squeeze : True
+reuse : None
+scope : 'MobilenetV1'
+global_pool : False

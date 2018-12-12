@@ -1,0 +1,4 @@
+global_pool : True
+output_stride : None
+spatial_squeeze : True
+reuse : None

@@ -1,0 +1,5 @@
+dropout_keep_prob : 0.8
+reuse : None
+scope : 'InceptionResnetV2'
+create_aux_logits : True
+activation_fn : tf.nn.relu

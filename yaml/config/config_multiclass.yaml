@@ -5,6 +5,7 @@ gpu_p : 1.
 
 #Model name to call automatically:
 model_name : "mobilenet_v2"
+variables_to_exclude : []
 #Checkpoint directory (For transfer learning)
 checkpoint_dir : "D:/mobilenet"
 checkpoint_pattern : "mobilenet_v2_1.4_224.ckpt"

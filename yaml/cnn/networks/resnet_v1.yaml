@@ -1,0 +1,5 @@
+global_pool : True
+output_stride : None
+spatial_squeeze : True
+store_non_strided_activations : False
+reuse : None

@@ -1,0 +1,4 @@
+weight_decay : 0.00004
+stddev : 0.09
+dropout_keep_prob : 0.8
+bn_decay : 0.997

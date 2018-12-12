@@ -14,6 +14,7 @@ slim = tf.contrib.slim
 stream = open(os.path.join(os.getcwd(), "yaml","config","config_multiclass.yaml"))
 data = load(stream)
 stream.close()
+#==================================#
 #=======Dataset Informations=======#
 #==================================#
 dataset_dir = data["dataset_dir"]
@@ -34,7 +35,11 @@ num_samples = data["num_samples"]
 names_to_labels = data["names_to_labels"]
 labels_to_names = data["labels_to_names"]
 #==================================#
+#==================================#
+
+#==================================#
 #=======Training Informations======#
+#==================================#
 #Nombre d'époques pour l'entraînement
 num_epochs = data["num_epochs"]
 #State your batch size
@@ -52,10 +57,23 @@ num_batches_per_epoch = int(num_samples / batch_size)
 #num_batches = num_steps for one epcoh
 decay_steps = int(num_epochs_before_decay * num_batches_per_epoch)
 #==================================#
+#==================================#
+
+#==================================#
+#=======Network Informations=======#
+#==================================#
+network_file = open(os.path.join(os.getcwd(), "yaml", "cnn", "networks", model_name+".yaml"))
+network_config = load(network_file)
+network_file.close()
+argscope_file = open(os.path.join(os.getcwd(), "yaml", "cnn", "argscope", model_name+".yaml"))
+argscope_config = load(argscope_file)
+network_file.close()
+#==================================#
+#==================================#
+
 #Create log_dir:
 if not os.path.exists(train_dir):
     os.mkdir(os.path.join(os.getcwd(),train_dir))
-
 #===================================================================== Training ===========================================================================#
 #Adding the graph:
 #Set the verbosity to INFO level
@@ -81,9 +99,9 @@ def model_fn(features, mode):
     #Create the model structure using network_fn :
     network = nets_factory.networks_map[model_name]
     network_argscope = nets_factory.arg_scopes_map[model_name]
-    with slim.arg_scope(network_argscope(weight_decay=weight_decay)):
+    with slim.arg_scope(network_argscope(**argscope_config)):
         #TODO: Check mobilenet_v1 module, var "excluding
-        logits, _ = network (features['image/encoded'], num_classes = len(labels_to_names), is_training=train_mode)
+        logits, _ = network(features['image/encoded'], num_classes = len(labels_to_names), is_training=train_mode, **network_config)
     #Find the max of the predicted class and change its data type
     predicted_classes = tf.cast(tf.argmax(logits, axis=1), tf.int64)
     labels = features["image/class/id"]
@@ -115,7 +133,6 @@ def model_fn(features, mode):
             #Load Imagenet weights for model fine-tuning
             excluding = []   
             variables_to_restore = slim.get_variables_to_restore(exclude=excluding)
-            print(variables_to_restore)
             if (not ckpt_state) and checkpoint_file and train_mode:
                 variables_to_restore = variables_to_restore[1:]
                 tf.train.init_from_checkpoint(checkpoint_file, 
