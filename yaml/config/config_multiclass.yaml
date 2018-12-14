@@ -4,11 +4,11 @@ dataset_dir : "D:/MURA-v1.1/multiclass"
 gpu_p : 1.
 
 #Model name to call automatically:
-model_name : "inception_v2"
+model_name : "mobilenet_v2"
 variables_to_exclude : []
 #Checkpoint directory (For transfer learning)
-checkpoint_dir : "D:/inception_v2"
-checkpoint_pattern : "inception_v2.ckpt"
+checkpoint_dir : "D:/mobilenet"
+checkpoint_pattern : "mobilenet_v2_1.4_224.ckpt"
 #File pattern to recognize
 file_pattern : "mura14_*.tfrecord"
 file_pattern_for_counting : "mura14"

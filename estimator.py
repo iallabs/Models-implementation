@@ -27,6 +27,7 @@ checkpoint_file = os.path.join(checkpoint_dir, checkpoint_pattern)
 train_dir = os.path.join(os.getcwd(), "train_"+model_name)
 #Define the checkpoint state to determine initialization: from pre-trained weigths or recovery
 ckpt_state = tf.train.get_checkpoint_state(train_dir)
+#TODO: Place image_size on yaml/cnn/model_name.yaml
 image_size = data["image_size"]
 #Define the training directory:
 #Nombre de classes à prédire
@@ -117,7 +118,7 @@ def model_fn(features, mode):
         'Accuracy': tf.metrics.accuracy(labels, predicted_classes, name="acc_op"),
         'Precision': tf.metrics.precision(labels, predicted_classes, name="precision_op"),
         'Recall': tf.metrics.recall(labels, predicted_classes, name="recall_op"),
-        'Acc_Class': tf.metrics.mean_per_class_accuracy(labels, predicted_classes,len(labels_to_names), name="per_class_acc")
+        #'Acc_Class': tf.metrics.mean_per_class_accuracy(labels, predicted_classes,len(labels_to_names), name="per_class_acc")
         }
         for name, value in metrics.items():
             items_list = value[1].get_shape().as_list()

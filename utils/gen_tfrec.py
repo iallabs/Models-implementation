@@ -113,13 +113,13 @@ def load_batch_estimator(dataset, model_name, batch_size, height, width, num_epo
         example['image/encoded'] = preprocess_func(example['image/encoded'], height, width)
         return example
     
-    dataset = dataset.map(process_fn, num_parallel_calls=8)
+    dataset = dataset.map(process_fn, num_parallel_calls=16)
     if is_training and shuffle:
-        dataset = dataset.shuffle(1000)
+        dataset = dataset.shuffle(3000)
         dataset = dataset.repeat(-1)
     #Batch up the dataset
     dataset = dataset.batch(batch_size)
-    #The following line avoid the bottleneck btw CPU and GPU
+    #The following line try to minimize the bottleneck btw CPU and GPU
     #prefecth always prepare a amount of data on CPU for the GPU
     dataset = dataset.prefetch(batch_size)
     return dataset
