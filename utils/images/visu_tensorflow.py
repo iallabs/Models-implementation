@@ -38,22 +38,12 @@ def extract_image(filename, num_channels):
     image = tf.image.convert_image_dtype(image, tf.float32)
     return image
 
-def per_pixel_mean(dataset):
+def per_pixel_mean_stddev(dataset):
     """
     Compute the mean of each pixel over the entire dataset.
 
     """
-    def collect_pixel():
-        return
-
     return
-
-def per_pixel_stddev(dataset):
-    """
-    Compute the stddev of each pixel over the entire dataset.
-
-    """
-    pass
 
 def per_channel_mean_stddev(dataset):
     """
