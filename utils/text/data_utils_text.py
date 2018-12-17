@@ -15,17 +15,19 @@ def read_text_file(filenames, header=False):
     Returns:
     - dataset : a tf.Dataset object
     """
+    # Use `Dataset.flat_map()` to transform each file as a separate nested dataset,
+    # and then concatenate their contents sequentially into a single "flat" dataset.
+    # * Skip the first line (header row).
+    # * Filter out lines beginning with "#" (comments).
+    dataset = tf.data.Dataset.from_tensor_slices(filenames)
     if header:
-        dataset = tf.data.TextLineDataset(filenames)
+        dataset = dataset.flat_map(
+            lambda filename: (
+                tf.data.TextLineDataset(filename)))
     else:
-        dataset = tf.data.Dataset.from_tensor_slices(filenames)
-        # Use `Dataset.flat_map()` to transform each file as a separate nested dataset,
-        # and then concatenate their contents sequentially into a single "flat" dataset.
-        # * Skip the first line (header row).
-        # * Filter out lines beginning with "#" (comments).
         dataset = dataset.flat_map(
             lambda filename: (
                 tf.data.TextLineDataset(filename)
                 .skip(1)))
-    pass
+    return dataset
 
