@@ -41,14 +41,11 @@ def extract_image(filename, num_channels):
 def per_pixel_mean_stddev(dataset, image_size):
     """
     Compute the mean of each pixel over the entire dataset.
-
     """
-    maximum = image_size*image_size*3
-    initial_state = tf.constant([0.]*maximum)
+    #NOTE: Replace "3" by the number of channels    
+    initial_state = tf.constant(0., dtype=tf.float32, shape=[image_size, image_size, 3])
     count = dataset.reduce(0, lambda x, _: x+1)
-    dataset_resized = dataset.map(lambda x: resize([x], image_size))
-    dataset_per_pixel = dataset_resized.map(lambda x: tf.reshape(x, [-1]))
-    pixel_sum = dataset_per_pixel.reduce(initial_state, lambda x, y: x + y)
+    pixel_sum = dataset.reduce(initial_state, lambda x, y: x + y)
     pixel_mean = tf.divide(pixel_sum, tf.to_float(count))
     return pixel_mean, count
 
@@ -89,7 +86,7 @@ def resize(image, image_size):
     return image
 
 #NOTE: Use FLAGS or YAML file to define files_pattern, desired number of channels and image_extension
-a, b = load_images("D:/MURA-v1.1/train/*/*/*/*.png", 3 ,image_extension='png')
+a, b = load_images("D:/chest/images/*.png", 3 ,image_extension='png')
 a, count = per_pixel_mean_stddev(a, 300)
 #NOTE: Implement Summaries of "per_pixel_mean_stddev" using tf.summary.histogram
 #NOTE: To encode stats, we use the new func tf.data.experimental.TFRecordWriter:
