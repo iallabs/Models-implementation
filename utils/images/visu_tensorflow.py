@@ -50,7 +50,7 @@ def per_pixel_mean_stddev(dataset, image_size):
     dataset_per_pixel = dataset_resized.map(lambda x: tf.reshape(x, [-1]))
     pixel_sum = dataset_per_pixel.reduce(initial_state, lambda x, y: x + y)
     pixel_mean = tf.divide(pixel_sum, tf.to_float(count))
-    return pixel_mean
+    return pixel_mean, count
 
 def per_channel_mean_stddev(dataset):
     """
@@ -88,9 +88,15 @@ def resize(image, image_size):
         image = tf.image.resize_bilinear(image, [image_size, image_size])[0]
     return image
 
-
+#NOTE: Use FLAGS or YAML file to define files_pattern, desired number of channels and image_extension
 a, b = load_images("D:/MURA-v1.1/train/*/*/*/*.png", 3 ,image_extension='png')
-a = per_pixel_mean_stddev(a, 300)
+a, count = per_pixel_mean_stddev(a, 300)
+#NOTE: Implement Summaries of "per_pixel_mean_stddev" using tf.summary.histogram
+#NOTE: To encode stats, we use the new func tf.data.experimental.TFRecordWriter:
+#:: writer = tf.data.experimental.TFRecordWriter(filename)
+#:: writer.write(dataset)
+#NOTE: The above step will be reproduced to encode pre-processed data
 with tf.Session() as sess:
-    sess.run(a)
-    print(a)
+    s, alpha = sess.run([a, count])
+    print(alpha)
+    print(s)

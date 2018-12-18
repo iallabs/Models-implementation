@@ -2,7 +2,6 @@ import tensorflow as tf
 import os
 import sys
 import math
-from utils.data_utils import int64_feature, bytes_feature, float_feature
 #import nltk
 
 
@@ -31,4 +30,7 @@ def read_text_file(filenames, header=False):
                 tf.data.TextLineDataset(filename)
                 .skip(1)))
     return dataset
+
+def read_text_file_pattern(file_pattern, header=False):
+    pass
 
