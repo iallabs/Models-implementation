@@ -62,10 +62,6 @@ def _crop(image, offset_height, offset_width, crop_height, crop_width):
     tf.summary.image("rnd_cropped_image", tf.expand_dims(image,0))
     return tf.reshape(image, cropped_shape)
 
-
-
-
-
 def _random_crop(image_list, crop_height, crop_width):
 
     """Crops the given list of images.

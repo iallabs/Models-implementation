@@ -38,12 +38,19 @@ def extract_image(filename, num_channels):
     image = tf.image.convert_image_dtype(image, tf.float32)
     return image
 
-def per_pixel_mean_stddev(dataset):
+def per_pixel_mean_stddev(dataset, image_size):
     """
     Compute the mean of each pixel over the entire dataset.
 
     """
-    return
+    maximum = image_size*image_size*3
+    initial_state = tf.constant([0.]*maximum)
+    count = dataset.reduce(0, lambda x, _: x+1)
+    dataset_resized = dataset.map(lambda x: resize([x], image_size))
+    dataset_per_pixel = dataset_resized.map(lambda x: tf.reshape(x, [-1]))
+    pixel_sum = dataset_per_pixel.reduce(initial_state, lambda x, y: x + y)
+    pixel_mean = tf.divide(pixel_sum, tf.to_float(count))
+    return pixel_mean
 
 def per_channel_mean_stddev(dataset):
     """
@@ -53,7 +60,8 @@ def per_channel_mean_stddev(dataset):
         means = tf.reduce_mean(decoded_image, axis=[0,1])
         stddev = tf.sqrt(tf.reduce_mean(tf.square(decoded_image-means), axis=[0,1]))
         return tf.stack([means, stddev])
-    return dataset.map(lambda x: channel_mean_stddev(x))
+    per_channel_mean_stddev_dataset = dataset.map(lambda x: channel_mean_stddev(x))
+    return per_channel_mean_stddev_dataset
 
 def per_mean_stddev(dataset):
     """
@@ -72,12 +80,17 @@ def encode_stats(alpha):
     """
     pass
 
+def resize(image, image_size):
+    rank_assertion = tf.Assert(
+            tf.equal(tf.rank(image), 4),
+            ['Rank of image must be equal to 4.'])
+    with tf.control_dependencies([rank_assertion]):
+        image = tf.image.resize_bilinear(image, [image_size, image_size])[0]
+    return image
+
+
 a, b = load_images("D:/MURA-v1.1/train/*/*/*/*.png", 3 ,image_extension='png')
-a= per_channel_mean_stddev(a)
-a_iter = a.make_one_shot_iterator()
-image = a_iter.get_next()
-b_iter = b.make_one_shot_iterator()
-label = b_iter.get_next()
+a = per_pixel_mean_stddev(a, 300)
 with tf.Session() as sess:
-    for i in range(10):
-        print(sess.run([image, label]))
+    sess.run(a)
+    print(a)
