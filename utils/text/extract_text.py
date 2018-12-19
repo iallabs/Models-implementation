@@ -2,6 +2,7 @@ import tensorflow as tf
 import os
 import sys
 import math
+import pandas as pd
 from bs4 import BeautifulSoup
 #import nltk
 

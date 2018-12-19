@@ -6,8 +6,8 @@ spark = pyspark.sql.SparkSession \
         .appName("Image Preprocessing Pipeline") \
         .getOrCreate()
 
-
-def load_images(filenames_pattern, train_size=0.):
+sc = spark.sparkContext
+def load_images(filenames_pattern, train_size=1.):
     """
     Using Spark new built-in data source for images,
     we want to load data into Dataframes in order to pass
@@ -18,12 +18,10 @@ def load_images(filenames_pattern, train_size=0.):
     train_size : float number representing the train size 
     (use Dataframe.split([train_size, 1 - train_size]))
     """
-    image_df = spark.read.format("image").load(filenames_pattern)
-    image_df.printSchema()
-    a = image_df.image.height
-    a.show()
-    print(a)
-    return image_df
+    df = spark.read.load(filenames_pattern, format="image")
+    df.printSchema()
+    print(df.take(2))
+    return df
 
 def per_pixel_mean(dataframe):
     """
@@ -54,4 +52,5 @@ def per_channel_stddev(dataframe):
     pass
 
 
-a = load_images("D:/MURA-v1.1/train/*/*/*/*.png") 
+a = load_images("D:/MURA-v1.1/train/*/*/*/*.png")
+spark.stop()

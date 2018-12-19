@@ -98,7 +98,9 @@ def model_fn(features, mode):
         # If value[][class_id]<0.5 then value[][class_id] = 0. else value[][class_id]= 1.
         #It is necessary for a multilabel classification problem
         logits_sig = tf.nn.sigmoid(logits,name="Sigmoid")
-        logits_sig = tf.to_float(logits_sig>=0.5)
+        
+        #NOTE: The following line is commented in order to check the correcteness of metric's computation
+        #logits_sig = tf.to_float(logits_sig>=0.5)
       
         metrics = {
             'Accuracy': tf.metrics.accuracy(features['image/class/id'], logits_sig, name="acc_op"),

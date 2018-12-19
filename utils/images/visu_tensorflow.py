@@ -34,9 +34,9 @@ def extract_image(filename, num_channels):
     read, decode and convert the image dtype
     """
     image_raw = tf.read_file(filename)
-    image = tf.image.decode_image(image_raw, num_channels)
-    image = tf.image.convert_image_dtype(image, tf.float32)
-    return image
+#    image = tf.image.decode_image(image_raw, num_channels)
+#    image = tf.image.convert_image_dtype(image, tf.float32)
+    return image_raw
 
 def per_pixel_mean_stddev(dataset, image_size):
     """
@@ -44,8 +44,9 @@ def per_pixel_mean_stddev(dataset, image_size):
     """
     #NOTE: Replace "3" by the number of channels    
     initial_state = tf.constant(0., dtype=tf.float32, shape=[image_size, image_size, 3])
+    dataset = dataset.map(lambda x: resize(x, image_size))
     count = dataset.reduce(0, lambda x, _: x+1)
-    pixel_sum = dataset.reduce(initial_state, lambda x, y: x + y)
+    pixel_sum = dataset.reduce(initial_state, lambda x, y: tf.add(x, y))
     pixel_mean = tf.divide(pixel_sum, tf.to_float(count))
     return pixel_mean, count
 
@@ -93,7 +94,3 @@ a, count = per_pixel_mean_stddev(a, 300)
 #:: writer = tf.data.experimental.TFRecordWriter(filename)
 #:: writer.write(dataset)
 #NOTE: The above step will be reproduced to encode pre-processed data
-with tf.Session() as sess:
-    s, alpha = sess.run([a, count])
-    print(alpha)
-    print(s)
