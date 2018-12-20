@@ -19,8 +19,10 @@ def load_images(filenames_pattern, train_size=1.):
     (use Dataframe.split([train_size, 1 - train_size]))
     """
     df = spark.read.load(filenames_pattern, format="image")
+    df = df.select(df.image.data.cast('float').alias("data"))
     df.printSchema()
-    print(df.take(2))
+    print(df.agg({"image.data": "mean"})\
+        .collect())
     return df
 
 def per_pixel_mean(dataframe):
