@@ -2,6 +2,8 @@ import tensorflow as tf
 
 
 from tensorflow.python.platform import tf_logging as logging
+from tensorflow.python import debug as tf_debug
+
 import research.slim.nets.nets_factory as nets_factory
 from utils.gen_tfrec import load_batch, get_dataset, load_batch_dense, load_batch_estimator
 
