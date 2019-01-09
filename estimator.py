@@ -13,7 +13,8 @@ from yaml import load
 slim = tf.contrib.slim
 
 #Open and read the yaml file:
-stream = open(os.path.join(os.getcwd(), "yaml","config","config_multiclass.yaml"))
+cwd = os.getcwd()
+stream = open(os.path.join(cwd, "yaml","config","config_multiclass.yaml"))
 data = load(stream)
 stream.close()
 #==================================#
@@ -26,7 +27,7 @@ model_name = data["model_name"]
 checkpoint_dir= data["checkpoint_dir"]
 checkpoint_pattern  = data["checkpoint_pattern"]
 checkpoint_file = os.path.join(checkpoint_dir, checkpoint_pattern)
-train_dir = os.path.join(os.getcwd(), "train_"+model_name)
+train_dir = os.path.join(cwd, "train_"+ model_name)
 #Define the checkpoint state to determine initialization: from pre-trained weigths or recovery
 ckpt_state = tf.train.get_checkpoint_state(train_dir)
 #TODO: Place image_size on yaml/cnn/model_name.yaml
@@ -57,17 +58,19 @@ num_epochs_before_decay = data["num_epochs_before_decay"]
 num_batches_per_epoch = int(num_samples / batch_size)
 #num_batches = num_steps for one epcoh
 decay_steps = int(num_epochs_before_decay * num_batches_per_epoch)
-#==================================#
+#==================================#.
 #==================================#
 
 #==================================#
 #=======Network Informations=======#
 #==================================#
-network_file = open(os.path.join(os.getcwd(), "yaml", "cnn", model_name+".yaml"))
+network_file = open(os.path.join(cwd, "yaml", "cnn", model_name+".yaml"))
 network_config = load(network_file)
 network_file.close()
 variables_to_exclude = network_config.pop("variables_to_exclude")
+print(variables_to_exclude)
 argscope_config = network_config.pop("argscope")
+print(argscope_config)
 if "prediction_fn" in network_config.keys():
     network_config["prediction_fn"] = getattr(tf.contrib.layers, network_config["prediction_fn"])
 if "activation_fn" in network_config.keys():
@@ -79,7 +82,7 @@ if "activation_fn" in argscope_config.keys():
 
 #Create log_dir:argscope_config
 if not os.path.exists(train_dir):
-    os.mkdir(os.path.join(os.getcwd(),train_dir))
+    os.mkdir(train_dir)
 #===================================================================== Training ===========================================================================#
 #Adding the graph:
 #Set the verbosity to INFO level

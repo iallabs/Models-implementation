@@ -2,8 +2,8 @@
 dataset_dir : "D:/MURA-v1.1"
 #Portion of GPU to attribute for training
 gpu_p : 1.
-#Model name to call automatically:
-model_name : "mobilenet_v2_140"
+#Model name, it serves to target the correct yaml file file in the "cnn" folder:
+model_name : "mobilenet_v2"
 #Checkpoint directory (For transfer learning)
 checkpoint_dir : "D:/mobilenet"
 checkpoint_pattern : "mobilenet_v2_1.4_224.ckpt"
@@ -11,8 +11,7 @@ checkpoint_pattern : "mobilenet_v2_1.4_224.ckpt"
 file_pattern : "mura_*.tfrecord"
 file_pattern_for_counting : "mura"
 #Num samples in the training dataset
-#Chest-X ray num_samples
-
+#MURA ray num_samples
 num_samples : 36807
 #Mapping from class to id
 names_to_labels : {

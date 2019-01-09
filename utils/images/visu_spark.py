@@ -1,4 +1,5 @@
 import pyspark
+import pyspark.sql.functions as F
 
 
 spark = pyspark.sql.SparkSession \
@@ -19,8 +20,9 @@ def load_images(filenames_pattern, train_size=1.):
     (use Dataframe.split([train_size, 1 - train_size]))
     """
     df = spark.read.load(filenames_pattern, format="image")
-    df.select("image.origin", "image.width", "image.height").show()
-    
+    a = df.withColumn("image.data", F.decode(df.image.data,'UTF-8'))\
+        .drop("image.data").withColumnRenamed("image.data", "image.data")
+    a["image.data"].show(1)     
     return df
 
 def per_pixel_mean(dataframe):
