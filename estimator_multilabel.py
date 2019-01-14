@@ -2,7 +2,7 @@ import tensorflow as tf
 
 from tensorflow.python.platform import tf_logging as logging
 import research.slim.nets.nets_factory as nets_factory
-from utils.gen_tfrec import get_dataset_multiclass, load_batch_estimator
+from utils.gen_tfrec import get_dataset_multilabel, load_batch_estimator
 
 import os
 import sys
@@ -65,7 +65,7 @@ tf.logging.set_verbosity(tf.logging.DEBUG)
 def input_fn(mode, dataset_dir,file_pattern, file_pattern_for_counting, labels_to_name, batch_size, image_size):
     train_mode = mode==tf.estimator.ModeKeys.TRAIN
     with tf.name_scope("dataset"):
-        dataset = get_dataset_multiclass("train" if train_mode else "eval",
+        dataset = get_dataset_multilabel("train" if train_mode else "eval",
                                         dataset_dir, file_pattern=file_pattern,
                                         file_pattern_for_counting=file_pattern_for_counting,
                                         labels_to_name=labels_to_name)

@@ -68,9 +68,7 @@ network_file = open(os.path.join(cwd, "yaml", "cnn", model_name+".yaml"))
 network_config = load(network_file)
 network_file.close()
 variables_to_exclude = network_config.pop("variables_to_exclude")
-print(variables_to_exclude)
 argscope_config = network_config.pop("argscope")
-print(argscope_config)
 if "prediction_fn" in network_config.keys():
     network_config["prediction_fn"] = getattr(tf.contrib.layers, network_config["prediction_fn"])
 if "activation_fn" in network_config.keys():
@@ -103,7 +101,6 @@ def input_fn(mode, dataset_dir, model_name, file_pattern, file_pattern_for_count
 
 def model_fn(features, mode):
     train_mode = mode==tf.estimator.ModeKeys.TRAIN
-    tf.summary.image("images",features['image/encoded'])
     tf.summary.histogram("final_image_hist", features['image/encoded'])
     #Create the model structure using network_fn :
     network = nets_factory.networks_map[model_name]

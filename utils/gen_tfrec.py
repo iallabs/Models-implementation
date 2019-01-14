@@ -30,7 +30,7 @@ def get_dataset(phase_name, dataset_dir, file_pattern, file_pattern_for_counting
     dataset = dataset.map(parse_fn, num_parallel_calls=8)
     return dataset
 
-def get_dataset_multiclass(phase_name, dataset_dir, file_pattern, file_pattern_for_counting, labels_to_name):
+def get_dataset_multilabel(phase_name, dataset_dir, file_pattern, file_pattern_for_counting, labels_to_name):
     """Creates dataset based on phased_name(train or evaluation), datatset_dir. """
 
     #On vérifie si phase_name est 'train' ou 'validation'

@@ -3,7 +3,7 @@ dataset_dir : "D:/MURA-v1.1/multiclass"
 #Portion of GPU to attribute for training
 gpu_p : 1.
 
-#Model name to call automatically:
+#Model name to call automatically:******
 model_name : "mobilenet_v2"
 variables_to_exclude : []
 #Checkpoint directory (For transfer learning)

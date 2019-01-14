@@ -21,8 +21,9 @@ def load_images(filenames_pattern, train_size=1.):
     """
     df = spark.read.load(filenames_pattern, format="image")
     a = df.withColumn("image.data", F.decode(df.image.data,'UTF-8'))\
-        .drop("image.data").withColumnRenamed("image.data", "image.data")
-    a["image.data"].show(1)     
+        .drop("image.data")\
+        .withColumnRenamed("image.data", "image.data")
+    a.collect(1)
     return df
 
 def per_pixel_mean(dataframe):
