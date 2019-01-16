@@ -19,12 +19,17 @@ def load_images(filenames_pattern, train_size=1.):
     train_size : float number representing the train size 
     (use Dataframe.split([train_size, 1 - train_size]))
     """
+    struct_keys = ["origin", "height", "width", "nChannels", "mode", "data"]
+  
     df = spark.read.load(filenames_pattern, format="image")
-    a = df.withColumn("image.data", F.decode(df.image.data,'UTF-8'))\
+    new_cols = [df["image"].getField(alpha) for alpha in struct_keys]
+    new_frame = df.select(*new_cols)
+    a = new_frame.withColumn("image.data", F.decode(new_frame.image.data,'UTF-8'))\
         .drop("image.data")\
-        .withColumnRenamed("image.data", "image.data")
-    a.collect(1)
-    return df
+        .withColumnRenamed("image.data", "data")
+    a.describe().show()
+    a.printSchema()
+    return a
 
 def per_pixel_mean(dataframe):
     """

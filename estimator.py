@@ -2,7 +2,6 @@ import tensorflow as tf
 
 
 from tensorflow.python.platform import tf_logging as logging
-from tensorflow.python import debug as tf_debug
 
 import research.slim.nets.nets_factory as nets_factory
 from utils.gen_tfrec import load_batch, get_dataset, load_batch_dense, load_batch_estimator
@@ -14,9 +13,8 @@ slim = tf.contrib.slim
 
 #Open and read the yaml file:
 cwd = os.getcwd()
-stream = open(os.path.join(cwd, "yaml","config","config_multiclass.yaml"))
-data = load(stream)
-stream.close()
+with open(os.path.join(cwd, "yaml","config","config.yaml")) as stream:
+    data = load(stream)
 #==================================#
 #=======Dataset Informations=======#
 #==================================#
@@ -64,9 +62,8 @@ decay_steps = int(num_epochs_before_decay * num_batches_per_epoch)
 #==================================#
 #=======Network Informations=======#
 #==================================#
-network_file = open(os.path.join(cwd, "yaml", "cnn", model_name+".yaml"))
-network_config = load(network_file)
-network_file.close()
+with open(os.path.join(cwd, "yaml", "cnn", model_name+".yaml")) as network_file:
+    network_config = load(network_file)
 variables_to_exclude = network_config.pop("variables_to_exclude")
 argscope_config = network_config.pop("argscope")
 if "prediction_fn" in network_config.keys():
@@ -173,7 +170,7 @@ def main():
     #Define max steps:
     max_step = num_epochs*num_batches_per_epoch
     #Define configuration non-distributed work:
-    run_config = tf.estimator.RunConfig(model_dir=train_dir, save_checkpoints_steps=num_batches_per_epoch,keep_checkpoint_max=num_epochs)
+    run_config = tf.estimator.RunConfig(save_checkpoints_steps=num_batches_per_epoch,keep_checkpoint_max=num_epochs)
     train_spec = tf.estimator.TrainSpec(input_fn=lambda:input_fn(tf.estimator.ModeKeys.TRAIN,
                                                 dataset_dir, model_name, file_pattern,
                                                 file_pattern_for_counting, names_to_labels,

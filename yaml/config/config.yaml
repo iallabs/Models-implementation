@@ -1,5 +1,5 @@
 #Dataset directory
-dataset_dir : "D:/MURA-v1.1"
+dataset_dir : "D:/MURA-v1.1/binary"
 #Portion of GPU to attribute for training
 gpu_p : 1.
 #Model name, it serves to target the correct yaml file file in the "cnn" folder:
