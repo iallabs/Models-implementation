@@ -169,8 +169,11 @@ def model_fn(features, mode):
 def main():
     #Define max steps:
     max_step = num_epochs*num_batches_per_epoch
+    strategy = tf.distribute.MirroredStrategy()
+    
     #Define configuration non-distributed work:
-    run_config = tf.estimator.RunConfig(save_checkpoints_steps=num_batches_per_epoch,keep_checkpoint_max=num_epochs)
+    run_config = tf.estimator.RunConfig(save_checkpoints_steps=num_batches_per_epoch,keep_checkpoint_max=num_epochs,
+                                        train_distribute=strategy, eval_distribute=strategy)
     train_spec = tf.estimator.TrainSpec(input_fn=lambda:input_fn(tf.estimator.ModeKeys.TRAIN,
                                                 dataset_dir, model_name, file_pattern,
                                                 file_pattern_for_counting, names_to_labels,
