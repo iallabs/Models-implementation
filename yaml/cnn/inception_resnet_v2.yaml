@@ -1,0 +1,9 @@
+dropout_keep_prob : 0.8
+reuse : null
+scope : 'InceptionResnetV2'
+create_aux_logits : True
+variables_to_exclude : ["InceptionV2/Logits"]
+argscope:
+  weight_decay : 0.00004
+  batch_norm_decay : 0.9997
+  batch_norm_epsilon : 0.001

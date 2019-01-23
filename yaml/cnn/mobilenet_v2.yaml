@@ -1,0 +1,8 @@
+depth_multiplier : 1.4
+scope : 'MobilenetV2'
+variables_to_exclude : ["MobilenetV2/Logits"]
+argscope:
+  weight_decay : 0.0004
+  stddev : 0.5
+  dropout_keep_prob : 0.8
+  bn_decay : 0.997

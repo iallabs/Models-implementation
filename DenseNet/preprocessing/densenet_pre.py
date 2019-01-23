@@ -6,14 +6,14 @@ import tensorflow as tf
 
 slim = tf.contrib.slim
 #ImageNet RGB mean values (moyenne)0.485, 0.457,0.407
-_R_MEAN = 0.485
-_G_MEAN = 0.457
-_B_MEAN = 0.407
+_R_MEAN = 123.68/255
+_G_MEAN = 116.779/255
+_B_MEAN = 103.939/255
 
 #ImageNet standard deviation (écart-type)0.229, 0.224, 0.225
-_R_STD = 0.229
-_G_STD = 0.224
-_B_STD = 0.225
+_R_STD = 58.393/255
+_G_STD = 57.12/255
+_B_STD = 57.375/255
 
 _RESIZE_SIDE_MIN = 256
 _RESIZE_SIDE_MAX = 512
@@ -61,10 +61,6 @@ def _crop(image, offset_height, offset_width, crop_height, crop_width):
         image = tf.slice(image, offsets, cropped_shape)
     tf.summary.image("rnd_cropped_image", tf.expand_dims(image,0))
     return tf.reshape(image, cropped_shape)
-
-
-
-
 
 def _random_crop(image_list, crop_height, crop_width):
 

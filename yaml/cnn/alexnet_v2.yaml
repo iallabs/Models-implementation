@@ -1,0 +1,7 @@
+dropout_keep_prob : 0.5
+spatial_squeeze : True
+scope : 'alexnet_v2'
+global_pool : False
+variables_to_exclude : ["InceptionV1/Logits"]
+argscope:
+  weight_decay : 0.00005

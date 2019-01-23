@@ -1,0 +1,10 @@
+dropout_keep_prob : 0.8
+spatial_squeeze : True
+global_pool : False
+prediction_fn : softmax
+variables_to_exclude : ["InceptionV1/Logits"]
+argscope:
+  weight_decay : 0.00004
+  use_batch_norm : True
+  batch_norm_decay : 0.9997
+  batch_norm_epsilon : 0.001

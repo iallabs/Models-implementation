@@ -3,7 +3,7 @@ import pandas as pd
 import os
 import sys
 import math
-from object_detection.utils import dataset_util
+import numpy as np
 #SOURCE: https://github.com/tensorflow/models/blob/master/research/slim/datasets/download_and_convert_flowers.py
 
 slim = tf.contrib.slim
@@ -12,23 +12,26 @@ def int64_feature(value):
     """ Returns a TF-feature of int64
         Args: value: scalar or list of values
         return: TF-Feature"""
-    if not isinstance(value, (tuple, list)):
+    if not isinstance(value, list):
         values = [value]
-
+    else:
+        values = value
     return tf.train.Feature(int64_list=tf.train.Int64List(value=values))
-
-def int64_list_feature(value):
-    return tf.train.Feature(int64_list=tf.train.Int64List(value=value))
 
 def bytes_feature(value):
     """Return a TF-feature of bytes"""
-    return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
+    if not isinstance(value, list):
+        values = [value]
+    else:
+        values = value
+    return tf.train.Feature(bytes_list=tf.train.BytesList(value=values))
 
-def bytes_list_feature(value):
-    return tf.train.Feature(bytes_list=tf.train.BytesList(value=value))
-
-def float_list_feature(value):
-    return tf.train.Feature(float_list=tf.train.FloatList(value=value))
+def float_feature(value):
+    if not isinstance(value, list):
+        values=[value]
+    else:
+        values = value
+    return tf.train.Feature(float_list=tf.train.FloatList(value=values))
 
 ##########################################
 
@@ -38,9 +41,7 @@ def image_to_tfexample(image_data,filename, image_format, height, width,
         'image/encoded': bytes_feature(image_data),
         'image/filename': bytes_feature(filename),
         'image/format': bytes_feature(image_format),
-        'image/class/label': int64_feature(class_id),
-        'image/height': int64_feature(height),
-        'image/width': int64_feature(width),
+        'image/class/id': float_feature(class_id),
     }))
 
 class ImageReader(object):
@@ -78,20 +79,16 @@ def _get_infos(dataset_dir, csv_name):
 
 ##########################################################
 
-def _convert_dataset(split_name, grouped, class_names_to_ids, dataset_dir, tfrecord_filename, _NUM_SHARDS):
+def _convert_dataset_multilabel(split_name, grouped, class_names_to_ids, dataset_dir, tfrecord_filename, _NUM_SHARDS):
     """Converts the given filenames to a TFRecord dataset.
     Args:
-
         split_name: The name of the dataset, either 'train' or 'validation'.
-    
         dataset_dir: The directory where the converted datasets are stored.
-
     """
-
-    assert split_name in ['train', 'validation']
+    assert split_name in ['train', 'eval']
     num_per_shard = int(math.ceil(len(grouped) / float(_NUM_SHARDS)))
     path_img = os.path.join(dataset_dir, 'images')#: To use if images are located in one folder named images
-    #path_img = dataset_dir #To use on MURA Like datasets (train and validation img folders, put the csv file on main direction)
+    number_data = len(grouped)
     with tf.Graph().as_default():
         image_reader = ImageReader()
 
@@ -101,77 +98,29 @@ def _convert_dataset(split_name, grouped, class_names_to_ids, dataset_dir, tfrec
                                 dataset_dir, split_name, shard_id, tfrecord_filename = tfrecord_filename, _NUM_SHARDS = _NUM_SHARDS)
                 with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
                     start_ndx = shard_id * num_per_shard
-                    end_ndx = min((shard_id+1) * num_per_shard, len(grouped))
-
+                    end_ndx = min((shard_id+1) * num_per_shard, number_data)
                     for i in range(start_ndx, end_ndx):
-                        sys.stdout.write('\r>> Converting image %d/%d shard %d' % (i+1, len(grouped), shard_id))
-                        sys.stdout.flush()
-
+                        sys.stdout.write("\r>> Converting data %d/%d" % (i, number_data))
                         # Read the filename:
                         row = grouped.iloc[i]
                         image_data = tf.gfile.FastGFile(os.path.join(path_img, row[0]), 'rb').read()
                         height, width = image_reader.read_image_dims(sess, image_data)
+                        class_id = [0. for _ in range(len(class_names_to_ids))]
                         #Special to ChestX Dataset: we only focus on the first anomaly(see Data_Entry_csv)
                         if '|' in row['Finding Labels']:
-                            class_name = row['Finding Labels'].split('|')[0]
+                            class_name = row['Finding Labels'].split('|')
+                            for s in class_name:
+                                class_id[class_names_to_ids[s]] = 1.
                         else: 
                             class_name = row['Finding Labels']
-                        """class_name = row[0].split('/')[-2].split('_')[-1]"""#MURA dataset extracting labels
-                        class_id = class_names_to_ids[class_name]
+                            class_id[class_names_to_ids[class_name]] = 1.
                         example = image_to_tfexample(image_data, row[0].encode(), 'png'.encode(),
                                                     height, width, class_id)
-        
                         tfrecord_writer.write(example.SerializeToString())
                         tfrecord_writer.flush()
-                        j=i
     sys.stdout.write('\n')
     sys.stdout.flush()
 
-
-def _convert_dataset_objd(split_name, grouped, class_names_to_ids, dataset_dir, tfrecord_filename, _NUM_SHARDS):
-    """Converts the given filenames to a TFRecord dataset compatible with Tensorflow Object API.
-    Args:
-        split_name: The name of the dataset, either 'train' or 'validation'.
-        dataset_dir: The directory where the converted datasets are stored.
-    """
-    assert split_name in ['train', 'validation']
-    num_per_shard = int(math.ceil(len(grouped) / float(_NUM_SHARDS)))
-    path_img = os.path.join(dataset_dir, 'images')#: To use if images are located in one folder named images
-    #path_img = dataset_dir #To use on MURA Like datasets (train and validation img folders, put the csv file on main direction)
-    with tf.Graph().as_default():
-        image_reader = ImageReader()
-
-        with tf.Session('') as sess:
-            for shard_id in range(_NUM_SHARDS):
-                output_filename = _get_dataset_filename(
-                                dataset_dir, split_name, shard_id, tfrecord_filename = tfrecord_filename, _NUM_SHARDS = _NUM_SHARDS)
-                with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
-                    start_ndx = shard_id * num_per_shard
-                    end_ndx = min((shard_id+1) * num_per_shard, len(grouped))
-
-                    for i in range(start_ndx, end_ndx):
-                        sys.stdout.write('\r>> Converting image %d/%d shard %d' % (i+1, len(grouped), shard_id))
-                        sys.stdout.flush()
-
-                        # Read the filename:
-                        row = grouped.iloc[i]
-                        image_data = tf.gfile.FastGFile(os.path.join(path_img, row[0]), 'rb').read()
-                        height, width = image_reader.read_image_dims(sess, image_data)
-                        #Special to ChestX Dataset: we only focus on the first anomaly(see Data_Entry_csv)
-                        if '|' in row['Finding Labels']:
-                            class_name = row['Finding Labels'].split('|')[0]
-                        else: 
-                            class_name = row['Finding Labels']
-                        """class_name = row[0].split('/')[-2].split('_')[-1]"""#MURA dataset extracting labels
-                        class_id = class_names_to_ids[class_name]
-                        example = image_to_tfexample(image_data, row[0].encode(), 'png'.encode(),
-                                                    height, width, class_id)
-        
-                        tfrecord_writer.write(example.SerializeToString())
-                        tfrecord_writer.flush()
-                        j=i
-    sys.stdout.write('\n')
-    sys.stdout.flush()
 #############################################################
 
 def _dataset_exists(dataset_dir, _NUM_SHARDS, output_filename):

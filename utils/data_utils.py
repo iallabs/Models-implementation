@@ -1,52 +1,24 @@
 import tensorflow as tf
+import PyPDF2
 import os
 import sys
 import math
+from .images.data_utils_image import compute_stats_fn, computes_stats, stats_to_tfexample, image_to_tfexample
 
-#SOURCE: https://github.com/tensorflow/models/blob/master/research/slim/datasets/download_and_convert_flowers.py
-
-slim = tf.contrib.slim
-
-def int64_feature(value):
-    """ Returns a TF-feature of int64
-        Args: value: scalar or list of values
-        return: TF-Feature"""
-    if not isinstance(value, (tuple, list)):
-        values = [value]
-
-    return tf.train.Feature(int64_list=tf.train.Int64List(value=values))
-
-def bytes_feature(value):
-    """Return a TF-feature of bytes"""
-    return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
-
-def image_to_tfexample(image_data, image_format, height, width, class_id):
-  return tf.train.Example(features=tf.train.Features(feature={
-        'image/encoded': bytes_feature(image_data),
-        'image/format': bytes_feature(image_format),
-        'image/class/label': int64_feature(class_id),
-        'image/height': int64_feature(height),
-        'image/width': int64_feature(width),
-    }))
-
-class ImageReader(object):
-    """Helper class that provides TensorFlow image coding utilities."""
-    def __init__(self):
-        # Initializes function that decodes RGB JPEG data.
-        self._decode_jpeg_data = tf.placeholder(dtype=tf.string)
-        self._decode_jpeg = tf.image.decode_jpeg(self._decode_jpeg_data, channels=3)
-
-    def read_image_dims(self, sess, image_data):
-        image = self.decode_jpeg(sess, image_data)
-        return image.shape[0], image.shape[1]
+def parse_pdf(pdf_filename):
+    """Function to parse PDF file
+    It'll return a list of images extracted from
+    the PDF, the number of pages(?) and also
+    the filename. pdf_filename would be the 
+    """
+    pdf_file = open(pdf_filename)
+    read_pdf = PyPDF2.PdfFileReader(pdf_file)
+    for i in range(read_pdf.getNumPages()):
+        page = read_pdf.getPage(i)
+        # The tag /Contents is required. If not content = None
+        content = page.getContents()
+        pass
     
-    def decode_jpeg(self, sess, image_data):
-        image = sess.run(self._decode_jpeg,
-                        feed_dict={self._decode_jpeg_data: image_data})
-        assert len(image.shape) == 3
-        assert image.shape[2] == 3
-        return image
-
 def _get_filenames_and_classes(dataset_dir):
 
     """Returns a list of filenames and inferred class names.
@@ -58,47 +30,82 @@ def _get_filenames_and_classes(dataset_dir):
     A list of image file paths, relative to `dataset_dir` and the list of
     subdirectories, representing class names.
     """
-    # print 'DATASET DIR:', dataset_dir
-    # print 'subdir:', [name for name in os.listdir(dataset_dir)]
-    # dataset_main_folder_list = []
-    # for name in os.listdir(dataset_dir):
-    # 	if os.path.isdir(name):
-    # 		dataset_main_folder_list.append(name)
-
-    dataset_main_folder_list = [name for name in os.listdir(dataset_dir) if os.path.isdir(os.path.join(dataset_dir,name))]
-    print(dataset_main_folder_list)
-    dataset_root = os.path.join(dataset_dir, dataset_main_folder_list[1])
-
-    directories = []
-
+    photo_filenames = []
+    
     class_names = []
 
-    for filename in os.listdir(dataset_root):
-        path = os.path.join(dataset_root, filename)
-        if os.path.isdir(path):
-            directories.append(path)
-            class_names.append(filename)
+    for root, _ , files in os.walk(dataset_dir):
+        path = root.split(os.sep)
+        for file in files:
+            photo_filenames.append(os.path.join(root,file))
+            class_names.append(path[-1].split("_")[-1])
 
+    return photo_filenames, class_names
+
+def _get_filenames_and_multiclasses(dataset_dir):
+
+    """Returns a list of filenames and inferred class names.
+    Args:
+    dataset_dir: A directory containing a set of subdirectories representing
+    class names. Each subdirectory should contain PNG or JPG encoded images.
+
+    Returns:
+    A list of image file paths, relative to `dataset_dir` and the list of
+    subdirectories, representing class names.
+    """
     photo_filenames = []
+    class_1_names = []
+    class_2_names = []
 
-    for directory in directories:
-        for filename in os.listdir(directory):
-            path = os.path.join(directory, filename)
-            photo_filenames.append(path)
+    for root, _ , files in os.walk(dataset_dir):
+        path = root.split(os.sep)
+        for file in files:
+            photo_filenames.append(os.path.join(root,file))
+            class_1_names.append(path[-1].split("_")[-1])
+            #TODO: The following is to encode the body part represented by the image
+            class_2_names.append(path[2].split("_")[-1])
+    return photo_filenames, class_1_names, class_2_names
 
-    return photo_filenames, sorted(class_names)
+def _get_train_valid(dataset_dir, multi=False):
+
+    """Returns a list of filenames and inferred class names.
+    This function needs a defined train and validayion folders
+    Args:
+    dataset_dir: A directory containing a set of subdirectories representing
+    class names. Each subdirectory should contain PNG or JPG encoded images.
+    Returns:
+    A list of image file paths, relative to `dataset_dir` and the list of
+    subdirectories, representing class names.
+    """
+    dataset_root_train = os.path.join(dataset_dir, "train")
+    dataset_root_valid = os.path.join(dataset_dir, "valid")
+    if multi:
+        photos_train, class_1_train, class_2_train = _get_filenames_and_multiclasses(dataset_root_train)
+        photos_valid, class_1_valid, class_2_valid = _get_filenames_and_multiclasses(dataset_root_valid)
+        return photos_train, class_1_train, class_2_train,\
+                photos_valid, class_1_valid, class_2_valid
+    else:
+        photos_train, class_train = _get_filenames_and_classes(dataset_root_train)
+        photos_valid, class_valid = _get_filenames_and_classes(dataset_root_valid)
+        return photos_train, class_train, photos_valid, class_valid
 
 
-def _get_dataset_filename(dataset_dir, split_name, shard_id, tfrecord_filename, _NUM_SHARDS):
-
-    output_filename = '%s_%s_%05d-of-%05d.tfrecord' % (
-                        tfrecord_filename, split_name, shard_id, _NUM_SHARDS)
+def _get_dataset_filename(dataset_dir, split_name, tfrecord_filename, stats=False):
+    if stats:
+        output_filename = os.path.join("stats",'%s_%s_stats.tfrecord' % (
+                        tfrecord_filename, split_name))
+    else:
+        output_filename = '%s_%s.tfrecord' % (
+                        tfrecord_filename, split_name)
 
     return os.path.join(dataset_dir, output_filename)
 
 
-def _convert_dataset(split_name, filenames, class_names_to_ids, dataset_dir, tfrecord_filename, _NUM_SHARDS):
+def _convert_dataset_bis(split_name, filenames, class_name, class_names_to_ids,
+                         dataset_dir, tfrecord_filename, batch_size,
+                         _NUM_SHARDS):
     """Converts the given filenames to a TFRecord dataset.
+    (example: Ten different classes, each image has an unique class).
     Args:
 
         split_name: The name of the dataset, either 'train' or 'validation'.
@@ -106,48 +113,75 @@ def _convert_dataset(split_name, filenames, class_names_to_ids, dataset_dir, tfr
         class_names_to_ids: A dictionary from class names (strings) to ids
         (integers).
         dataset_dir: The directory where the converted datasets are stored.
-
     """
-
-    assert split_name in ['train', 'validation']
-    num_per_shard = int(math.ceil(len(filenames) / float(_NUM_SHARDS)))
-
-    with tf.Graph().as_default():
-        image_reader = ImageReader()
-
-        with tf.Session('') as sess:
-            for shard_id in range(_NUM_SHARDS):
-                output_filename = _get_dataset_filename(
-                                dataset_dir, split_name, shard_id, tfrecord_filename = tfrecord_filename, _NUM_SHARDS = _NUM_SHARDS)
-
-                with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
-                    start_ndx = shard_id * num_per_shard
-                    end_ndx = min((shard_id+1) * num_per_shard, len(filenames))
-                    for i in range(start_ndx, end_ndx):
-                        sys.stdout.write('\r>> Converting image %d/%d shard %d' % (
-                        i+1, len(filenames), shard_id))
-                        sys.stdout.flush()
-
-                        # Read the filename:
-                        image_data = tf.gfile.FastGFile(filenames[i], 'rb').read()
-                        height, width = image_reader.read_image_dims(sess, image_data)
-                        class_name = os.path.basename(os.path.dirname(filenames[i]))
-                        class_id = class_names_to_ids[class_name]
-                        print(class_name)
-                        print(filenames[i])
-                        example = image_to_tfexample(image_data, 'jpg'.encode(), height, width, class_id)
-                        tfrecord_writer.write(example.SerializeToString())
-
+    images_data = []
+    class_id_data = []
+    assert split_name in ['train', 'eval']
+    lenght = len(filenames)
+    output_filename = _get_dataset_filename(
+                                dataset_dir, split_name, tfrecord_filename = tfrecord_filename,stats=False)
+    output_filename_stats = _get_dataset_filename(
+                                dataset_dir, split_name, tfrecord_filename = tfrecord_filename,stats=True)
+    tfrecord_stats = tf.python_io.TFRecordWriter(output_filename_stats)
+    
+    with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer_1:
+        for i in range(lenght):
+            # Read the filename:
+            image_data = tf.gfile.FastGFile(filenames[i], 'rb').read()
+            images_data.append(image_data)
+            class_id = class_names_to_ids[class_name[i]]
+            class_id_data.append(class_id)
+            example_image = image_to_tfexample(image_data, class_id)
+            tfrecord_writer_1.write(example_image.SerializeToString())
+            if (i+1) % batch_size == 0 or i == lenght-1:
+                with tf.Graph().as_default():
+                    with tf.Session('') as sess:
+                        gen_mean, gen_stddev, r_mean, r_stddev,\
+                        g_mean, g_stddev, b_mean,\
+                        b_stddev = computes_stats(sess, images_data)
+                        for j in range(len(gen_mean)):
+                            sys.stdout.write('\r>> Converting stats %d/%d' % (
+                            i+1, lenght))
+                            sys.stdout.flush()
+                            #Py3: use encode("utf-8")
+                            example = stats_to_tfexample(gen_mean[j],
+                                                        gen_stddev[j], r_mean[j], r_stddev[j],
+                                                        g_mean[j], g_stddev[j], b_mean[j],
+                                                        b_stddev[j],class_name[j].encode(),
+                                                        class_id_data[j])
+                            tfrecord_stats.write(example.SerializeToString())
+                images_data = []
+                class_id_data = []   
     sys.stdout.write('\n')
     sys.stdout.flush()
 
+def _convert_dataset_multi(split_name, filenames, class_first_name, class_snd_name, class_names_to_ids,
+                         dataset_dir, tfrecord_filename, batch_size,
+                         _NUM_SHARDS):
+    """Converts the given filenames to a TFRecord dataset of multiple classes
+       We have two types of labels, and we want to join them into an unique pair of keys
+    Args:
 
-def _dataset_exists(dataset_dir, _NUM_SHARDS, output_filename):
-    for split_name in ['train', 'validation']:
-        for shard_id in range(_NUM_SHARDS):
-            tfrecord_filename = _get_dataset_filename(
-            dataset_dir, split_name, shard_id, output_filename, _NUM_SHARDS)
-            if not tf.gfile.Exists(tfrecord_filename):
-                return False
-
-    return True
+        split_name: The name of the dataset, either 'train' or 'validation'.
+        filenames: A list of absolute paths to png or jpg images.
+        class_names_to_ids: A dictionary from class names (strings) to ids
+        (integers).
+        dataset_dir: The directory where the converted datasets are stored.
+    """
+    assert split_name in ['train', 'eval']
+    max_id = int(math.ceil(len(filenames) / float(batch_size)))
+    output_filename = _get_dataset_filename(
+                            dataset_dir, split_name, tfrecord_filename = tfrecord_filename,stats=False)
+    with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
+        for i in range(len(filenames)):
+            sys.stdout.write('\r>> Converting stats %d/%d' % (
+                            i, len(filenames)))
+            sys.stdout.flush()
+            # Read the filename:
+            image_data = tf.gfile.FastGFile(filenames[i], 'rb').read()
+            #TODO/The following line is Special to MURA dataset for defining 13 classes.
+            class_id = class_names_to_ids[class_snd_name[i]+"_"+class_first_name[i]]
+            example_image = image_to_tfexample(image_data, class_id)
+            tfrecord_writer.write(example_image.SerializeToString())
+    sys.stdout.write('\n')
+    sys.stdout.flush()

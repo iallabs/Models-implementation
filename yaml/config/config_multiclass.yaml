@@ -1,0 +1,64 @@
+#Dataset directory
+dataset_dir : "D:/MURA-v1.1/multiclass"
+#Portion of GPU to attribute for training
+gpu_p : 1.
+
+#Model name to call automatically:******
+model_name : "mobilenet_v2"
+variables_to_exclude : []
+#Checkpoint directory (For transfer learning)
+checkpoint_dir : "D:/mobilenet"
+checkpoint_pattern : "mobilenet_v2_1.4_224.ckpt"
+#File pattern to recognize
+file_pattern : "mura14_*.tfrecord"
+file_pattern_for_counting : "mura14"
+#Num samples in the training dataset
+#Chest-X ray train num_samples
+
+num_samples : 36807
+#Mapping from class to id
+labels_to_names : {
+                '0':'ELBOW_negative', 
+                '1':'ELBOW_positive',
+                '2':'FINGER_negative', 
+                '3':'FINGER_positive',
+                '4': 'FOREARM_negative',
+                '5': 'FOREARM_positive',
+                '6': 'HAND_negative',
+                '7': 'HAND_positive',
+                '8': 'HUMERUS_negative',
+                '9': 'HUMERUS_positive',
+                '10': 'SHOULDER_negative',
+                '11': 'SHOULDER_positive',
+                '12': 'WRIST_negative',
+                '13': 'WRIST_positive',
+        }
+        
+names_to_labels : {"ELBOW_negative": 0,
+                    "ELBOW_positive": 1,
+                    "FINGER_negative": 2,
+                    "FINGER_positive": 3,
+                    "FOREARM_negative": 4,
+                    "FOREARM_positive": 5,
+                    "HAND_negative": 6,
+                    "HAND_positive": 7,
+                    "HUMERUS_negative": 8,
+                    "HUMERUS_positive": 9,
+                    "SHOULDER_negative": 10,
+                    "SHOULDER_positive": 11,
+                    "WRIST_negative": 12,
+                    "WRIST_positive" : 13}
+
+##########Training parameters##########
+shuffle : True
+num_shuffle : 10000
+image_size : 224
+#Nombre d'époques pour l'entraînement
+num_epochs : 100
+#State your batch size
+batch_size : 8
+#Learning rate information and configuration (Up to you to experiment)
+initial_learning_rate : 0.0001
+#Decay factor
+learning_rate_decay_factor : 0.95
+num_epochs_before_decay : 1

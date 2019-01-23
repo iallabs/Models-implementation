@@ -1,0 +1,11 @@
+dropout_keep_prob  : 0.8
+reuse  : null
+scope  : 'InceptionV4'
+create_aux_logits  : True
+variables_to_exclude : ["InceptionV4/Logits"]
+argscope:
+  weight_decay : 0.00004
+  use_batch_norm : True
+  batch_norm_decay : 0.9997
+  batch_norm_epsilon : 0.001
+  activation_fn : relu

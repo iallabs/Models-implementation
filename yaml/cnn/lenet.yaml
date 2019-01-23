@@ -1,0 +1,6 @@
+dropout_keep_prob : 0.5
+prediction_fn : softmax
+scope : 'LeNet'
+variables_to_exclude : ["LeNet/Logits"]
+argscope:
+  weight_decay : 0.00004
